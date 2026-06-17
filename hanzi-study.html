@@ -949,6 +949,7 @@ function resetScore() {
   studyResults.clear();
   updateScore();
   clearCardStates();
+  practiceActiveId = null;
   syncPracticeSelection();
 }
 
@@ -1300,6 +1301,14 @@ document.addEventListener('DOMContentLoaded', function() {
       if (e.target === helpEl) closeHelp();
     });
   }
+
+  // Blur buttons on click (except inside modals) to return focus to the body for hotkeys
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (btn && !btn.closest('.flashcard') && !btn.closest('.help-modal')) {
+      btn.blur();
+    }
+  });
 });
 window.addEventListener('resize', updateHeaderOffset);
 
