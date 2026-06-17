@@ -161,8 +161,8 @@ main {
 /* Grid */
 .char-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  gap: 0.7rem;
   margin-bottom: 2rem;
 }
 
@@ -171,11 +171,11 @@ main {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.6rem 0.4rem 0.5rem;
+  padding: 1rem 0.6rem 0.85rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.5rem;
   cursor: pointer;
   transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
   position: relative;
@@ -196,7 +196,7 @@ main {
   box-shadow: 0 0 0 2px var(--teal-light), 0 6px 20px rgba(0,0,0,0.08);
 }
 .char-num {
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   color: var(--ink3);
   font-weight: 400;
   align-self: flex-end;
@@ -204,20 +204,20 @@ main {
 }
 .char-glyph {
   font-family: 'Noto Serif SC', serif;
-  font-size: 2.2rem;
+  font-size: 3.2rem;
   line-height: 1;
   color: var(--ink);
   font-weight: 400;
 }
 .char-pinyin {
-  font-size: 0.72rem;
+  font-size: 1.1rem;
   color: var(--teal);
   font-weight: 500;
   text-align: center;
   line-height: 1.3;
   min-height: 1em;
 }
-.char-pinyin.multi { font-size: 0.65rem; color: var(--ink2); }
+.char-pinyin.multi { font-size: 0.95rem; color: var(--ink2); }
 .char-card .multi-pinyins span {
   display: inline-block;
   margin: 0 1px;
@@ -486,10 +486,10 @@ body.study-mode .practice-bar { display: block; }
 .score-reset:hover { color: var(--ink2); }
 
 /* Compact view */
-body.compact .char-grid { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 0.4rem; }
-body.compact .char-glyph { font-size: 1.7rem; }
-body.compact .char-pinyin { font-size: 0.62rem; }
-body.compact .char-card { padding: 0.4rem 0.3rem; }
+body.compact .char-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 0.6rem; }
+body.compact .char-glyph { font-size: 2.2rem; }
+body.compact .char-pinyin { font-size: 0.8rem; }
+body.compact .char-card { padding: 0.65rem 0.5rem; }
 body.compact .card-result-btns { height: 20px; gap: 3px; }
 body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; }
 
@@ -615,7 +615,7 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   .site-title { font-size: 1.1rem; }
   header { padding: 1.25rem 1rem 1rem; }
   main { padding: 1rem 0.75rem 3rem; }
-  .char-grid { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 0.5rem; }
+  .char-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.6rem; }
   .header-status {
     min-width: 0;
   }
