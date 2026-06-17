@@ -117,6 +117,17 @@ header {
   font-size: 0.8rem;
   color: rgba(255,255,255,0.45);
   white-space: nowrap;
+}
+.header-tools {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.header-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   margin-left: auto;
 }
 
@@ -362,7 +373,10 @@ main {
 
 /* Study mode (hide pinyin) */
 body.study-mode .char-pinyin { visibility: hidden; }
-body.study-mode .char-card.revealed .char-pinyin { visibility: visible; }
+body.study-mode .char-card:hover .char-pinyin,
+body.study-mode .char-card.revealed .char-pinyin,
+body.study-mode .char-card.correct .char-pinyin,
+body.study-mode .char-card.wrong .char-pinyin { visibility: visible; }
 
 /* Study mode result states */
 body.study-mode .char-card.correct {
@@ -379,43 +393,88 @@ body.study-mode .char-card.wrong .char-glyph { color: #c0392b; }
 /* Result buttons shown after reveal */
 .card-result-btns {
   display: none !important;
-  gap: 4px;
+  width: 100%;
+  height: 22px;
+  gap: 5px;
   margin-top: 2px;
+  visibility: hidden;
+  pointer-events: none;
 }
-body.study-mode .char-card.revealed .card-result-btns {
+body.study-mode .char-card .card-result-btns {
   display: flex !important;
 }
-body.study-mode .char-card.correct .card-result-btns { display: none !important; }
-body.study-mode .char-card.wrong .card-result-btns { display: none !important; }
+body.study-mode .char-card.revealed .card-result-btns {
+  visibility: visible;
+  pointer-events: auto;
+}
+body.study-mode .char-card:hover:not(.correct):not(.wrong) .card-result-btns {
+  visibility: visible;
+  pointer-events: auto;
+}
 .card-result-btns button {
   flex: 1;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.65rem;
-  padding: 2px 0;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0;
   cursor: pointer;
   font-family: inherit;
   font-weight: 600;
-  transition: opacity 0.15s;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.1s, border-color 0.15s;
 }
 .card-result-btns button:hover { opacity: 0.8; }
+.card-result-btns button:active { transform: scale(0.96); }
 .btn-correct { background: #e1f5ee; color: #0f6e56; }
 .btn-wrong   { background: #fdf0ee; color: #c0392b; }
+.key-hint {
+  margin-left: 3px;
+  font-size: 0.6rem;
+  color: inherit;
+  opacity: 0.55;
+}
 
 /* Score counter in header */
-.study-score {
+.practice-bar {
   display: none;
+  position: sticky;
+  top: var(--header-offset, 0px);
+  z-index: 90;
+  background: rgba(255,255,255,0.94);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+body.study-mode .practice-bar { display: block; }
+.practice-bar-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0.55rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+.practice-label {
+  margin-right: auto;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink2);
+  letter-spacing: 0.04em;
+}
+.study-score {
+  display: flex;
   align-items: center;
   gap: 0.75rem;
   font-size: 0.82rem;
   font-weight: 500;
 }
-body.study-mode .study-score { display: flex; }
 .score-correct { color: #6fcfa8; }
 .score-wrong   { color: #e8897a; }
 .score-reset {
   font-size: 0.72rem;
-  color: rgba(255,255,255,0.4);
+  color: var(--ink3);
   cursor: pointer;
   background: none;
   border: none;
@@ -424,13 +483,15 @@ body.study-mode .study-score { display: flex; }
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.score-reset:hover { color: rgba(255,255,255,0.7); }
+.score-reset:hover { color: var(--ink2); }
 
 /* Compact view */
 body.compact .char-grid { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 0.4rem; }
 body.compact .char-glyph { font-size: 1.7rem; }
 body.compact .char-pinyin { font-size: 0.62rem; }
 body.compact .char-card { padding: 0.4rem 0.3rem; }
+body.compact .card-result-btns { height: 20px; gap: 3px; }
+body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; }
 
 .help-btn {
   display: inline-flex;
@@ -555,6 +616,11 @@ body.compact .char-card { padding: 0.4rem 0.3rem; }
   header { padding: 1.25rem 1rem 1rem; }
   main { padding: 1rem 0.75rem 3rem; }
   .char-grid { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 0.5rem; }
+  .header-status {
+    min-width: 0;
+  }
+  .practice-bar-inner { padding: 0.5rem 0.75rem; }
+  .key-hint { display: none; }
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
@@ -578,7 +644,7 @@ body.compact .char-card { padding: 0.4rem 0.3rem; }
         <button class="filter-btn" data-level="3">三级 1605</button>
       </div>
     </div>
-    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+    <div class="header-tools">
       <div class="filter-btns">
         <button class="view-btn active" id="btn-normal" onclick="setStudy(false)">显示拼音</button>
         <button class="view-btn" id="btn-study" onclick="setStudy(true)">练习模式</button>
@@ -588,11 +654,8 @@ body.compact .char-card { padding: 0.4rem 0.3rem; }
         <button class="view-btn" id="btn-compact" onclick="setCompact(true)">紧凑</button>
       </div>
     </div>
-    <div class="header-stats" id="stats">显示 8105 字</div>
-    <div class="study-score">
-      <span class="score-correct">✓ <span id="score-correct">0</span></span>
-      <span class="score-wrong">✗ <span id="score-wrong">0</span></span>
-      <button class="score-reset" onclick="resetScore()">重置</button>
+    <div class="header-status">
+      <div class="header-stats" id="stats">显示 8105 字</div>
     </div>
 
     <button class="help-btn" onclick="openHelp()" title="使用说明">
@@ -601,6 +664,17 @@ body.compact .char-card { padding: 0.4rem 0.3rem; }
     </button>
   </div>
 </header>
+
+<div class="practice-bar" aria-label="练习进度">
+  <div class="practice-bar-inner">
+    <div class="practice-label">练习进度</div>
+    <div class="study-score">
+      <span class="score-correct">✓ <span id="score-correct">0</span></span>
+      <span class="score-wrong">✗ <span id="score-wrong">0</span></span>
+      <button class="score-reset" onclick="resetScore()">重置</button>
+    </div>
+  </div>
+</div>
 
 <main>
   <div id="grid-container"></div>
@@ -713,7 +787,16 @@ body.compact .char-card { padding: 0.4rem 0.3rem; }
         </div>
         <div class="help-text">
           <strong>练习模式 — 隐藏拼音</strong>
-          <span>点击顶栏「练习模式」后，所有拼音会被隐藏。将鼠标悬停在字卡上即可显示拼音，适合自我测验。</span>
+          <span>点击顶栏「练习模式」后，所有拼音会被隐藏。悬停或点击字卡可显示拼音，适合自我测验。</span>
+        </div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h.01M11 8h.01M15 8h.01M7 12h10M9 16h6"/></svg>
+        </div>
+        <div class="help-text">
+          <strong>键盘练习</strong>
+          <span>按 Space 或 Enter 显示拼音，按 J 标记正确，按 K 标记错误，并自动跳到下一个未标记汉字。</span>
         </div>
       </div>
       <div class="help-row">
@@ -744,19 +827,15 @@ let currentFilter = 'all';
 let currentSearch = '';
 let visibleChars = [];
 let activeModalIdx = -1;
+const studyResults = new Map();
+let practiceActiveId = null;
 
-// Map toned vowels to plain equivalents for fuzzy pinyin search
-const TONE_MAP = {
-  'ā':'a','á':'a','ǎ':'a','à':'a',
-  'ē':'e','é':'e','ě':'e','è':'e',
-  'ī':'i','í':'i','ǐ':'i','ì':'i',
-  'ō':'o','ó':'o','ǒ':'o','ò':'o',
-  'ū':'u','ú':'u','ǔ':'u','ù':'u',
-  'ǖ':'v','ǘ':'v','ǚ':'v','ǜ':'v','ü':'v',
-  'ń':'n','ň':'n',
-};
 function stripTones(str) {
-  return str.split('').map(ch => TONE_MAP[ch] || ch).join('');
+  return str
+    .toLowerCase()
+    .replace(/[ǖǘǚǜü]/g, 'v')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 function getFiltered() {
@@ -785,6 +864,7 @@ function renderGrid() {
   
   if (visibleChars.length === 0) {
     container.innerHTML = `<div class="empty"><div class="empty-char">？</div><p>没有找到匹配的汉字</p></div>`;
+    practiceActiveId = null;
     return;
   }
 
@@ -811,22 +891,26 @@ function renderGrid() {
   }
   
   container.innerHTML = html;
+  syncPracticeSelection();
 }
 
 function cardHTML(c) {
   const pinyins = c.p;
   const isMulti = pinyins.length > 1;
+  const result = studyResults.get(c.i);
+  const resultClass = result ? ` ${result}` : '';
+  const activeClass = document.body.classList.contains('study-mode') && c.i === practiceActiveId ? ' active' : '';
   const pyHTML = isMulti
     ? `<div class="char-pinyin multi multi-pinyins">${pinyins.map(p => `<span>${p}</span>`).join('')}</div>`
     : `<div class="char-pinyin">${pinyins[0] || ''}</div>`;
   
-  return `<div class="char-card" onclick="handleCardClick(event, this, ${c.i})" data-id="${c.i}">
+  return `<div class="char-card${resultClass}${activeClass}" onclick="handleCardClick(event, this, ${c.i})" data-id="${c.i}">
     <div class="char-num">${c.i}</div>
     <div class="char-glyph" onclick="speakChar(event,'${c.c}')" title="点击朗读">${c.c}</div>
     ${pyHTML}
     <div class="card-result-btns">
-      <button class="btn-correct" onclick="markCard(event, this, 'correct')">✓ 对</button>
-      <button class="btn-wrong"   onclick="markCard(event, this, 'wrong')">✗ 错</button>
+      <button class="btn-correct" onclick="markCard(event, this, 'correct')" aria-label="标记正确" title="正确">对<span class="key-hint">J</span></button>
+      <button class="btn-wrong"   onclick="markCard(event, this, 'wrong')" aria-label="标记错误" title="错误">错<span class="key-hint">K</span></button>
     </div>
   </div>`;
 }
@@ -834,6 +918,7 @@ function cardHTML(c) {
 function handleCardClick(event, el, id) {
   // In study mode: click card body reveals pinyin (not the glyph or result btns)
   if (document.body.classList.contains('study-mode')) {
+    setPracticeActive(id);
     if (!el.classList.contains('correct') && !el.classList.contains('wrong')) {
       el.classList.add('revealed');
     }
@@ -847,21 +932,87 @@ function handleCardClick(event, el, id) {
 function markCard(event, btn, result) {
   event.stopPropagation();
   const card = btn.closest('.char-card');
+  setPracticeActive(parseInt(card.dataset.id, 10));
+  applyCardResult(card, result);
+}
+
+function applyCardResult(card, result) {
+  const id = parseInt(card.dataset.id, 10);
+  studyResults.set(id, result);
   card.classList.remove('revealed');
+  card.classList.remove('correct', 'wrong');
   card.classList.add(result);
-  // Update score
-  const key = result === 'correct' ? 'score-correct' : 'score-wrong';
-  const el = document.getElementById(key);
-  el.textContent = parseInt(el.textContent) + 1;
+  updateScore();
 }
 
 function resetScore() {
+  studyResults.clear();
+  updateScore();
+  clearCardStates();
+  syncPracticeSelection();
+}
+
+function updateScore() {
+  let correct = 0;
+  let wrong = 0;
+  for (const result of studyResults.values()) {
+    if (result === 'correct') correct++;
+    if (result === 'wrong') wrong++;
+  }
+  document.getElementById('score-correct').textContent = String(correct);
+  document.getElementById('score-wrong').textContent = String(wrong);
+}
+
+function clearCardStates() {
   document.getElementById('score-correct').textContent = '0';
   document.getElementById('score-wrong').textContent = '0';
-  // Clear all result states on cards
   document.querySelectorAll('.char-card').forEach(c => {
-    c.classList.remove('correct', 'wrong', 'revealed');
+    c.classList.remove('correct', 'wrong', 'revealed', 'active');
   });
+}
+
+function syncPracticeSelection() {
+  if (!document.body.classList.contains('study-mode')) return;
+  if (!visibleChars.some(c => c.i === practiceActiveId)) {
+    practiceActiveId = getNextUnmarkedId(0) || (visibleChars[0] && visibleChars[0].i) || null;
+  }
+  applyPracticeActive();
+}
+
+function setPracticeActive(id) {
+  practiceActiveId = id;
+  applyPracticeActive();
+}
+
+function applyPracticeActive() {
+  document.querySelectorAll('.char-card.active').forEach(el => el.classList.remove('active'));
+  if (!practiceActiveId) return;
+  const card = getPracticeActiveCard();
+  if (card) card.classList.add('active');
+}
+
+function getPracticeActiveCard() {
+  if (!practiceActiveId) return null;
+  return document.querySelector(`.char-card[data-id="${practiceActiveId}"]`);
+}
+
+function getNextUnmarkedId(startIdx) {
+  for (let offset = 0; offset < visibleChars.length; offset++) {
+    const idx = (startIdx + offset) % visibleChars.length;
+    const candidate = visibleChars[idx];
+    if (candidate && !studyResults.has(candidate.i)) return candidate.i;
+  }
+  return null;
+}
+
+function advancePracticeCard() {
+  if (!visibleChars.length || !practiceActiveId) return;
+  const currentIdx = visibleChars.findIndex(c => c.i === practiceActiveId);
+  const nextId = getNextUnmarkedId(currentIdx + 1);
+  if (!nextId) return;
+  setPracticeActive(nextId);
+  const card = getPracticeActiveCard();
+  if (card) card.scrollIntoView({ block: 'nearest' });
 }
 
 let hwWriter = null;
@@ -936,6 +1087,7 @@ document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
     document.querySelectorAll('.filter-btn[data-level]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentFilter = btn.dataset.level;
+    practiceActiveId = null;
     renderGrid();
   });
 });
@@ -946,6 +1098,7 @@ document.getElementById('search').addEventListener('input', e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
     currentSearch = e.target.value.trim();
+    practiceActiveId = null;
     renderGrid();
   }, 200);
 });
@@ -953,10 +1106,58 @@ document.getElementById('search').addEventListener('input', e => {
 // Keyboard navigation
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeHelp(); closeModal(); return; }
+  if (handlePracticeKey(e)) return;
   if (!document.getElementById('modal').classList.contains('open')) return;
   if (e.key === 'ArrowRight') navCard(1);
   if (e.key === 'ArrowLeft') navCard(-1);
 });
+
+function handlePracticeKey(e) {
+  if (!document.body.classList.contains('study-mode')) return false;
+  if (document.getElementById('modal').classList.contains('open')) return false;
+  if (document.getElementById('help-modal').classList.contains('open')) return false;
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT' || e.target.isContentEditable) return false;
+
+  const key = e.key.toLowerCase();
+  const revealKey = e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter';
+  const gradeKey = key === 'j' || key === 'k';
+  if (!revealKey && !gradeKey && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return false;
+
+  e.preventDefault();
+  syncPracticeSelection();
+  const card = getPracticeActiveCard();
+  if (!card) return true;
+
+  if (revealKey) {
+    card.classList.add('revealed');
+    card.scrollIntoView({ block: 'nearest' });
+    return true;
+  }
+
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    movePracticeSelection(e.key === 'ArrowRight' ? 1 : -1);
+    return true;
+  }
+
+  if (!card.classList.contains('revealed') && !card.classList.contains('correct') && !card.classList.contains('wrong')) {
+    card.classList.add('revealed');
+    return true;
+  }
+
+  applyCardResult(card, key === 'j' ? 'correct' : 'wrong');
+  advancePracticeCard();
+  return true;
+}
+
+function movePracticeSelection(dir) {
+  if (!visibleChars.length) return;
+  const currentIdx = Math.max(0, visibleChars.findIndex(c => c.i === practiceActiveId));
+  const nextIdx = (currentIdx + dir + visibleChars.length) % visibleChars.length;
+  setPracticeActive(visibleChars[nextIdx].i);
+  const card = getPracticeActiveCard();
+  if (card) card.scrollIntoView({ block: 'nearest' });
+}
 
 // Modal backdrop click
 document.getElementById('modal').addEventListener('click', e => {
@@ -968,17 +1169,26 @@ function setStudy(on) {
   document.getElementById('btn-normal').classList.toggle('active', !on);
   document.getElementById('btn-study').classList.toggle('active', on);
   if (!on) {
-    // Clear reveal/result states when exiting study mode
-    document.querySelectorAll('.char-card').forEach(c => {
-      c.classList.remove('correct', 'wrong', 'revealed');
-    });
+    practiceActiveId = null;
+    studyResults.clear();
+    clearCardStates();
+  } else {
+    syncPracticeSelection();
   }
+  updateHeaderOffset();
 }
 
 function setCompact(on) {
   document.body.classList.toggle('compact', on);
   document.getElementById('btn-large').classList.toggle('active', !on);
   document.getElementById('btn-compact').classList.toggle('active', on);
+  updateHeaderOffset();
+}
+
+function updateHeaderOffset() {
+  const header = document.querySelector('header');
+  if (!header) return;
+  document.documentElement.style.setProperty('--header-offset', `${header.offsetHeight}px`);
 }
 
 // ── Browser TTS ───────────────────────────────────────────────────────────────
@@ -1002,6 +1212,7 @@ if (window.speechSynthesis) {
 
 function waitForVoices() {
   return new Promise(resolve => {
+    if (!window.speechSynthesis) { resolve(); return; }
     if (voicesReady) { resolve(); return; }
     const check = setInterval(() => {
       loadVoices();
@@ -1025,6 +1236,7 @@ function speakOne(text, lang) {
 }
 
 async function speakBrowser(char, pinyins) {
+  if (!window.speechSynthesis) return;
   await waitForVoices(); // ensure zh voice is loaded before speaking
   window.speechSynthesis.cancel();
   if (pinyins.length <= 1) {
@@ -1050,6 +1262,13 @@ function getPinyinsForChar(char) {
 function speakChar(event, char) {
   event.stopPropagation();
   const card = event.currentTarget.closest('.char-card');
+  if (document.body.classList.contains('study-mode') && card) {
+    setPracticeActive(parseInt(card.dataset.id, 10));
+    if (!card.classList.contains('correct') && !card.classList.contains('wrong')) {
+      card.classList.add('revealed');
+    }
+    return;
+  }
   const pinyins = getPinyinsForChar(char);
   if (card) {
     card.classList.add('speaking');
@@ -1074,6 +1293,7 @@ function speakModalChar() {
 function openHelp() { document.getElementById('help-modal').classList.add('open'); }
 function closeHelp() { document.getElementById('help-modal').classList.remove('open'); }
 document.addEventListener('DOMContentLoaded', function() {
+  updateHeaderOffset();
   const helpEl = document.getElementById('help-modal');
   if (helpEl) {
     helpEl.addEventListener('click', e => {
@@ -1081,10 +1301,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+window.addEventListener('resize', updateHeaderOffset);
 
 
 // Initial render
 renderGrid();
+updateHeaderOffset();
 </script>
 </body>
 </html>
