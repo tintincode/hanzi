@@ -51,6 +51,12 @@ header {
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s;
+}
+.site-title:hover {
+  opacity: 0.9;
 }
 .site-title span {
   color: #e8d5a3;
@@ -328,20 +334,25 @@ main {
 .fc-nav {
   display: flex;
   gap: 0.75rem;
-  justify-content: center;
+  justify-content: space-between;
 }
 .fc-nav button {
-  padding: 0.5rem 1.5rem;
+  flex: 1;
+  padding: 0.6rem 0.2rem;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--bg);
   font-family: inherit;
   font-size: 0.85rem;
+  font-weight: 500;
   cursor: pointer;
   color: var(--ink);
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.1s;
+  text-align: center;
+  white-space: nowrap;
 }
 .fc-nav button:hover { background: var(--border); }
+.fc-nav button:active { transform: scale(0.97); }
 .fc-nav button.primary {
   background: var(--ink);
   color: white;
@@ -403,11 +414,10 @@ body.study-mode .char-card.wrong .char-glyph { color: #c0392b; }
 body.study-mode .char-card .card-result-btns {
   display: flex !important;
 }
-body.study-mode .char-card.revealed .card-result-btns {
-  visibility: visible;
-  pointer-events: auto;
-}
-body.study-mode .char-card:hover:not(.correct):not(.wrong) .card-result-btns {
+body.study-mode .char-card.revealed .card-result-btns,
+body.study-mode .char-card:hover .card-result-btns,
+body.study-mode .char-card.active.correct .card-result-btns,
+body.study-mode .char-card.active.wrong .card-result-btns {
   visibility: visible;
   pointer-events: auto;
 }
@@ -629,7 +639,7 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
 
 <header>
   <div class="header-inner">
-    <div class="site-title">通用规范汉字表 <span>学习</span></div>
+    <div class="site-title" onclick="goHome()" title="返回首页 / 重置筛选">通用规范汉字表 <span>学习</span></div>
     <div class="controls">
       <div class="search-wrap">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
@@ -938,10 +948,19 @@ function markCard(event, btn, result) {
 
 function applyCardResult(card, result) {
   const id = parseInt(card.dataset.id, 10);
-  studyResults.set(id, result);
+  const current = studyResults.get(id);
+
   card.classList.remove('revealed');
   card.classList.remove('correct', 'wrong');
-  card.classList.add(result);
+
+  if (current === result) {
+    // If clicking the same result, toggle it off (unmark)
+    studyResults.delete(id);
+  } else {
+    // Otherwise, apply/change the result
+    studyResults.set(id, result);
+    card.classList.add(result);
+  }
   updateScore();
 }
 
@@ -1164,6 +1183,23 @@ function movePracticeSelection(dir) {
 document.getElementById('modal').addEventListener('click', e => {
   if (e.target === document.getElementById('modal')) closeModal();
 });
+
+function goHome() {
+  const searchInput = document.getElementById('search');
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  currentSearch = '';
+
+  document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.level === 'all');
+  });
+  currentFilter = 'all';
+
+  setStudy(false);
+  setCompact(false);
+  renderGrid();
+}
 
 function setStudy(on) {
   document.body.classList.toggle('study-mode', on);
