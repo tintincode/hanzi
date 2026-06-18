@@ -694,7 +694,6 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
     <div class="study-score">
       <span class="score-correct">✓ <span id="score-correct">0</span></span>
       <span class="score-wrong">✗ <span id="score-wrong">0</span></span>
-      <button class="score-reset" onclick="resetScore()">重置</button>
     </div>
   </div>
 </div>
@@ -1140,15 +1139,6 @@ function applyCardResult(card, result) {
   scheduleHistorySave();
 }
 
-function resetScore() {
-  ensurePracticeSession();
-  studyResults.clear();
-  updateScore();
-  clearCardStates();
-  practiceActiveId = null;
-  syncPracticeSelection();
-  saveActiveSession();
-}
 
 function updateScore() {
   let correct = 0;
@@ -1285,7 +1275,16 @@ document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filter-btn[data-level]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    if (document.body.classList.contains('study-mode')) saveActiveSession();
+    if (document.body.classList.contains('study-mode')) {
+      // Discard the current session if it has no progress — don't litter history
+      if (activeSession && studyResults.size === 0) {
+        historyState.sessions = historyState.sessions.filter(s => s.id !== activeSession.id);
+        activeSession = null;
+        historyState.activeSessionId = null;
+      } else {
+        saveActiveSession();
+      }
+    }
     currentFilter = btn.dataset.level;
     practiceActiveId = null;
     if (document.body.classList.contains('study-mode')) {
@@ -1403,6 +1402,19 @@ function selectHistorySession(id) {
 }
 
 function startNewPracticeSession() {
+  // If current session has no progress yet, just reuse it — no ghost entries
+  // But refresh the timestamp so the session reflects when the user actually started
+  if (activeSession && studyResults.size === 0) {
+    const now = Date.now();
+    activeSession.createdAt = now;
+    activeSession.updatedAt = now;
+    activeSession.label = `${levelName(activeSession.level)} ${formatSessionTime(now)}`;
+    saveHistoryState();
+    updateHistorySelect();
+    practiceActiveId = null;
+    syncPracticeSelection();
+    return;
+  }
   saveActiveSession(true);
   const session = createPracticeSession(currentFilter);
   activateSession(session);
