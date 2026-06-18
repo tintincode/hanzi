@@ -473,6 +473,16 @@ body.study-mode .practice-bar { display: block; }
   color: var(--ink2);
   letter-spacing: 0.04em;
 }
+.history-select {
+  max-width: 220px;
+  padding: 0.28rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink2);
+  font-family: inherit;
+  font-size: 0.76rem;
+}
 .study-score {
   display: flex;
   align-items: center;
@@ -630,6 +640,7 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
     min-width: 0;
   }
   .practice-bar-inner { padding: 0.5rem 0.75rem; }
+  .history-select { max-width: 130px; }
   .key-hint { display: none; }
 }
 </style>
@@ -678,6 +689,8 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
 <div class="practice-bar" aria-label="练习进度">
   <div class="practice-bar-inner">
     <div class="practice-label">练习进度</div>
+    <select class="history-select" id="history-select" onchange="selectHistorySession(this.value)" aria-label="历史记录"></select>
+    <button class="score-reset" onclick="startNewPracticeSession()">新练习</button>
     <div class="study-score">
       <span class="score-correct">✓ <span id="score-correct">0</span></span>
       <span class="score-wrong">✗ <span id="score-wrong">0</span></span>
@@ -839,6 +852,167 @@ let visibleChars = [];
 let activeModalIdx = -1;
 const studyResults = new Map();
 let practiceActiveId = null;
+const HISTORY_KEY = 'hanziStudyHistory.v1';
+const MAX_HISTORY_SESSIONS = 30;
+let historyState = { version: 1, activeSessionId: null, sessions: [] };
+let activeSession = null;
+let historySaveTimer = null;
+
+function loadHistoryState() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.version === 1 && Array.isArray(parsed.sessions)) {
+      historyState = parsed;
+    }
+  } catch (e) {
+    historyState = { version: 1, activeSessionId: null, sessions: [] };
+  }
+}
+
+function saveHistoryState() {
+  try {
+    trimHistorySessions();
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(historyState));
+  } catch (e) {
+    // Practice still works if private browsing or storage quota blocks persistence.
+  }
+}
+
+function scheduleHistorySave() {
+  clearTimeout(historySaveTimer);
+  historySaveTimer = setTimeout(() => saveActiveSession(), 250);
+}
+
+function levelName(level) {
+  return level === 'all' ? '全部' : `${level}级`;
+}
+
+function formatSessionTime(ts) {
+  const date = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${date.getMonth() + 1}/${date.getDate()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function createPracticeSession(level = currentFilter) {
+  const now = Date.now();
+  const session = {
+    id: `s_${now}_${Math.random().toString(36).slice(2, 8)}`,
+    level,
+    label: `${levelName(level)} ${formatSessionTime(now)}`,
+    createdAt: now,
+    updatedAt: now,
+    lastId: null,
+    correct: 0,
+    wrong: 0,
+    results: {}
+  };
+  historyState.sessions.unshift(session);
+  historyState.activeSessionId = session.id;
+  activeSession = session;
+  trimHistorySessions();
+  saveHistoryState();
+  updateHistorySelect();
+  return session;
+}
+
+function trimHistorySessions() {
+  historyState.sessions.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  historyState.sessions = historyState.sessions.slice(0, MAX_HISTORY_SESSIONS);
+  if (activeSession && !historyState.sessions.some(s => s.id === activeSession.id)) {
+    activeSession = historyState.sessions[0] || null;
+    historyState.activeSessionId = activeSession ? activeSession.id : null;
+  }
+}
+
+function getSession(id) {
+  return historyState.sessions.find(s => s.id === id) || null;
+}
+
+function getLatestSessionForLevel(level) {
+  return historyState.sessions
+    .filter(s => s.level === level)
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0] || null;
+}
+
+function activateSession(session) {
+  if (!session) return;
+  activeSession = session;
+  historyState.activeSessionId = session.id;
+  currentFilter = session.level || 'all';
+  currentSearch = '';
+  const searchInput = document.getElementById('search');
+  if (searchInput) searchInput.value = '';
+  updateFilterButtons();
+  loadSessionResults(session);
+  updateHistorySelect();
+}
+
+function loadSessionResults(session) {
+  studyResults.clear();
+  const results = session.results || {};
+  Object.entries(results).forEach(([id, result]) => {
+    if (result === 'c') studyResults.set(parseInt(id, 10), 'correct');
+    if (result === 'w') studyResults.set(parseInt(id, 10), 'wrong');
+  });
+  practiceActiveId = session.lastId || null;
+  updateScore();
+}
+
+function saveActiveSession(force = false) {
+  clearTimeout(historySaveTimer);
+  if (!activeSession) return;
+  if (!force && !document.body.classList.contains('study-mode')) return;
+  const results = {};
+  let correct = 0;
+  let wrong = 0;
+  for (const [id, result] of studyResults.entries()) {
+    if (result === 'correct') {
+      results[id] = 'c';
+      correct++;
+    } else if (result === 'wrong') {
+      results[id] = 'w';
+      wrong++;
+    }
+  }
+  activeSession.level = currentFilter;
+  activeSession.lastId = practiceActiveId;
+  activeSession.results = results;
+  activeSession.correct = correct;
+  activeSession.wrong = wrong;
+  activeSession.updatedAt = Date.now();
+  historyState.activeSessionId = activeSession.id;
+  saveHistoryState();
+  updateHistorySelect();
+}
+
+function updateHistorySelect() {
+  const select = document.getElementById('history-select');
+  if (!select) return;
+  if (historyState.sessions.length === 0) {
+    select.innerHTML = '<option value="">暂无记录</option>';
+    return;
+  }
+  select.innerHTML = historyState.sessions.map(session => {
+    const reviewed = Object.keys(session.results || {}).length;
+    const label = `${session.label || levelName(session.level)} · ${reviewed}字 · 对${session.correct || 0}/错${session.wrong || 0}`;
+    return `<option value="${session.id}" ${session.id === historyState.activeSessionId ? 'selected' : ''}>${label}</option>`;
+  }).join('');
+}
+
+function updateFilterButtons() {
+  document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.level === currentFilter);
+  });
+}
+
+function ensurePracticeSession() {
+  if (activeSession && activeSession.level === currentFilter) return activeSession;
+  const session = getLatestSessionForLevel(currentFilter) || createPracticeSession(currentFilter);
+  activateSession(session);
+  return session;
+}
 
 function stripTones(str) {
   return str
@@ -941,6 +1115,7 @@ function handleCardClick(event, el, id) {
 
 function markCard(event, btn, result) {
   event.stopPropagation();
+  ensurePracticeSession();
   const card = btn.closest('.char-card');
   setPracticeActive(parseInt(card.dataset.id, 10));
   applyCardResult(card, result);
@@ -962,14 +1137,17 @@ function applyCardResult(card, result) {
     card.classList.add(result);
   }
   updateScore();
+  scheduleHistorySave();
 }
 
 function resetScore() {
+  ensurePracticeSession();
   studyResults.clear();
   updateScore();
   clearCardStates();
   practiceActiveId = null;
   syncPracticeSelection();
+  saveActiveSession();
 }
 
 function updateScore() {
@@ -1002,6 +1180,7 @@ function syncPracticeSelection() {
 function setPracticeActive(id) {
   practiceActiveId = id;
   applyPracticeActive();
+  if (document.body.classList.contains('study-mode')) scheduleHistorySave();
 }
 
 function applyPracticeActive() {
@@ -1106,8 +1285,13 @@ document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filter-btn[data-level]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    if (document.body.classList.contains('study-mode')) saveActiveSession();
     currentFilter = btn.dataset.level;
     practiceActiveId = null;
+    if (document.body.classList.contains('study-mode')) {
+      const session = getLatestSessionForLevel(currentFilter) || createPracticeSession(currentFilter);
+      activateSession(session);
+    }
     renderGrid();
   });
 });
@@ -1120,6 +1304,7 @@ document.getElementById('search').addEventListener('input', e => {
     currentSearch = e.target.value.trim();
     practiceActiveId = null;
     renderGrid();
+    if (document.body.classList.contains('study-mode')) scheduleHistorySave();
   }, 200);
 });
 
@@ -1185,6 +1370,10 @@ document.getElementById('modal').addEventListener('click', e => {
 });
 
 function goHome() {
+  saveActiveSession(true);
+  setStudy(false);
+  setCompact(false);
+
   const searchInput = document.getElementById('search');
   if (searchInput) {
     searchInput.value = '';
@@ -1196,9 +1385,33 @@ function goHome() {
   });
   currentFilter = 'all';
 
-  setStudy(false);
-  setCompact(false);
   renderGrid();
+}
+
+function selectHistorySession(id) {
+  const session = getSession(id);
+  if (!session) return;
+  saveActiveSession(true);
+  activateSession(session);
+  document.body.classList.add('study-mode');
+  document.getElementById('btn-normal').classList.remove('active');
+  document.getElementById('btn-study').classList.add('active');
+  renderGrid();
+  syncPracticeSelection();
+  saveHistoryState();
+  updateHeaderOffset();
+}
+
+function startNewPracticeSession() {
+  saveActiveSession(true);
+  const session = createPracticeSession(currentFilter);
+  activateSession(session);
+  studyResults.clear();
+  practiceActiveId = null;
+  updateScore();
+  renderGrid();
+  syncPracticeSelection();
+  saveActiveSession(true);
 }
 
 function setStudy(on) {
@@ -1206,11 +1419,15 @@ function setStudy(on) {
   document.getElementById('btn-normal').classList.toggle('active', !on);
   document.getElementById('btn-study').classList.toggle('active', on);
   if (!on) {
+    saveActiveSession(true);
     practiceActiveId = null;
     studyResults.clear();
     clearCardStates();
   } else {
+    ensurePracticeSession();
+    renderGrid();
     syncPracticeSelection();
+    saveActiveSession(true);
   }
   updateHeaderOffset();
 }
@@ -1347,9 +1564,21 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 window.addEventListener('resize', updateHeaderOffset);
+window.addEventListener('beforeunload', saveActiveSession);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveActiveSession();
+});
 
 
 // Initial render
+loadHistoryState();
+trimHistorySessions();
+const initialSession = getSession(historyState.activeSessionId) || historyState.sessions[0] || null;
+if (initialSession) {
+  activateSession(initialSession);
+} else {
+  updateHistorySelect();
+}
 renderGrid();
 updateHeaderOffset();
 </script>
