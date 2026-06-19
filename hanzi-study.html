@@ -465,13 +465,61 @@ body.study-mode .practice-bar { display: block; }
   align-items: center;
   justify-content: flex-end;
   gap: 1rem;
+  flex-wrap: wrap;
+}
+.practice-progress-wrap {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
 }
 .practice-label {
-  margin-right: auto;
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--ink2);
   letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.practice-progress-track {
+  width: 110px;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.practice-progress-fill {
+  height: 100%;
+  background: #0f6e56;
+  border-radius: 4px;
+  width: 0%;
+  transition: width 0.25s ease;
+}
+.practice-progress-count {
+  font-size: 0.74rem;
+  color: var(--ink3);
+  white-space: nowrap;
+}
+.practice-complete-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%) translateY(12px);
+  background: #1a1714;
+  color: #fff;
+  padding: 0.65rem 1.1rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  z-index: 250;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.practice-complete-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 .history-select {
   max-width: 220px;
@@ -483,6 +531,24 @@ body.study-mode .practice-bar { display: block; }
   font-family: inherit;
   font-size: 0.76rem;
 }
+.history-icon-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  color: var(--ink2);
+  flex-shrink: 0;
+}
+.history-icon-btn:hover { background: var(--border); }
+.history-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .study-score {
   display: flex;
   align-items: center;
@@ -492,6 +558,7 @@ body.study-mode .practice-bar { display: block; }
 }
 .score-correct { color: #6fcfa8; }
 .score-wrong   { color: #e8897a; }
+.score-accuracy { color: var(--ink3); font-size: 0.76rem; font-weight: 500; }
 .score-reset {
   font-size: 0.72rem;
   color: var(--ink3);
@@ -542,6 +609,73 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   padding: 1rem;
 }
 .help-backdrop.open { display: flex; }
+.mini-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(26,23,20,0.55);
+  z-index: 320;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.mini-backdrop.open { display: flex; }
+.mini-modal {
+  background: var(--surface);
+  border-radius: 16px;
+  width: min(360px, 92vw);
+  padding: 1.4rem;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+.mini-modal h3 {
+  font-family: "Noto Serif SC", serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 0.6rem;
+  color: var(--ink);
+}
+.mini-modal p {
+  font-size: 0.85rem;
+  color: var(--ink2);
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+.mini-modal input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+  color: var(--ink);
+}
+.mini-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+.mini-modal-actions button {
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink2);
+  cursor: pointer;
+}
+.mini-modal-actions .mini-btn-primary {
+  background: #1a1714;
+  color: #fff;
+  border-color: #1a1714;
+}
+.mini-modal-actions .mini-btn-danger {
+  background: #c0392b;
+  color: #fff;
+  border-color: #c0392b;
+}
 .help-modal {
   background: var(--surface);
   border-radius: 20px;
@@ -688,12 +822,32 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
 
 <div class="practice-bar" aria-label="练习进度">
   <div class="practice-bar-inner">
-    <div class="practice-label">练习进度</div>
-    <select class="history-select" id="history-select" onchange="selectHistorySession(this.value)" aria-label="历史记录"></select>
-    <button class="score-reset" onclick="startNewPracticeSession()">新练习</button>
+    <div class="practice-progress-wrap">
+      <div class="practice-label">练习进度</div>
+      <div class="practice-progress-track"><div class="practice-progress-fill" id="practice-progress-fill"></div></div>
+      <div class="practice-progress-count" id="practice-progress-count">0 / 0</div>
+    </div>
     <div class="study-score">
       <span class="score-correct">✓ <span id="score-correct">0</span></span>
       <span class="score-wrong">✗ <span id="score-wrong">0</span></span>
+      <span class="score-accuracy" id="score-accuracy"></span>
+    </div>
+    <select class="history-select" id="history-select" onchange="selectHistorySession(this.value)" aria-label="历史记录"></select>
+    <button class="history-icon-btn" id="history-rename-btn" onclick="renameActiveSession()" title="重命名记录" aria-label="重命名记录">✏️</button>
+    <button class="history-icon-btn" id="history-delete-btn" onclick="deleteActiveSession()" title="删除记录" aria-label="删除记录">🗑</button>
+    <button class="score-reset" onclick="startNewPracticeSession()">新练习</button>
+  </div>
+</div>
+<div class="practice-complete-toast" id="practice-complete-toast">🎉 本组已全部完成！</div>
+
+<div class="mini-backdrop" id="mini-modal">
+  <div class="mini-modal">
+    <h3 id="mini-modal-title"></h3>
+    <p id="mini-modal-text"></p>
+    <input type="text" id="mini-modal-input" style="display:none;">
+    <div class="mini-modal-actions">
+      <button id="mini-modal-cancel">取消</button>
+      <button id="mini-modal-confirm" class="mini-btn-primary">确定</button>
     </div>
   </div>
 </div>
@@ -818,7 +972,7 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
         </div>
         <div class="help-text">
           <strong>键盘练习</strong>
-          <span>按 Space 或 Enter 显示拼音，按 J 标记正确，按 K 标记错误，并自动跳到下一个未标记汉字。</span>
+          <span>按 Space 或 Enter 显示拼音，按 J 标记正确，按 K 标记错误，并自动跳到下一个未标记汉字。按 U 可撤销上一次标记。</span>
         </div>
       </div>
       <div class="help-row">
@@ -853,7 +1007,7 @@ const studyResults = new Map();
 let practiceActiveId = null;
 const HISTORY_KEY = 'hanziStudyHistory.v1';
 const MAX_HISTORY_SESSIONS = 30;
-let historyState = { version: 1, activeSessionId: null, sessions: [] };
+let historyState = { version: 1, activeSessionId: null, practiceMode: false, sessions: [] };
 let activeSession = null;
 let historySaveTimer = null;
 
@@ -866,7 +1020,7 @@ function loadHistoryState() {
       historyState = parsed;
     }
   } catch (e) {
-    historyState = { version: 1, activeSessionId: null, sessions: [] };
+    historyState = { version: 1, activeSessionId: null, practiceMode: false, sessions: [] };
   }
 }
 
@@ -885,13 +1039,14 @@ function scheduleHistorySave() {
 }
 
 function levelName(level) {
-  return level === 'all' ? '全部' : `${level}级`;
+  const names = { '1': '一级', '2': '二级', '3': '三级' };
+  return level === 'all' ? '全部' : (names[level] || `${level}级`);
 }
 
 function formatSessionTime(ts) {
   const date = new Date(ts);
   const pad = n => String(n).padStart(2, '0');
-  return `${date.getMonth() + 1}/${date.getDate()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function createPracticeSession(level = currentFilter) {
@@ -917,7 +1072,7 @@ function createPracticeSession(level = currentFilter) {
 }
 
 function trimHistorySessions() {
-  historyState.sessions.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  historyState.sessions.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   historyState.sessions = historyState.sessions.slice(0, MAX_HISTORY_SESSIONS);
   if (activeSession && !historyState.sessions.some(s => s.id === activeSession.id)) {
     activeSession = historyState.sessions[0] || null;
@@ -950,6 +1105,7 @@ function activateSession(session) {
 
 function loadSessionResults(session) {
   studyResults.clear();
+  lastMarkAction = null;
   const results = session.results || {};
   Object.entries(results).forEach(([id, result]) => {
     if (result === 'c') studyResults.set(parseInt(id, 10), 'correct');
@@ -988,8 +1144,13 @@ function saveActiveSession(force = false) {
 
 function updateHistorySelect() {
   const select = document.getElementById('history-select');
+  const renameBtn = document.getElementById('history-rename-btn');
+  const deleteBtn = document.getElementById('history-delete-btn');
+  const hasSessions = historyState.sessions.length > 0;
+  if (renameBtn) renameBtn.disabled = !hasSessions;
+  if (deleteBtn) deleteBtn.disabled = !hasSessions;
   if (!select) return;
-  if (historyState.sessions.length === 0) {
+  if (!hasSessions) {
     select.innerHTML = '<option value="">暂无记录</option>';
     return;
   }
@@ -1000,6 +1161,108 @@ function updateHistorySelect() {
   }).join('');
 }
 
+function openMiniModal({ title, text, withInput, inputValue, confirmLabel, danger, onConfirm }) {
+  const backdrop = document.getElementById('mini-modal');
+  const titleEl = document.getElementById('mini-modal-title');
+  const textEl = document.getElementById('mini-modal-text');
+  const inputEl = document.getElementById('mini-modal-input');
+  const confirmBtn = document.getElementById('mini-modal-confirm');
+  const cancelBtn = document.getElementById('mini-modal-cancel');
+
+  titleEl.textContent = title || '';
+  textEl.textContent = text || '';
+  textEl.style.display = text ? '' : 'none';
+
+  if (withInput) {
+    inputEl.style.display = '';
+    inputEl.value = inputValue || '';
+  } else {
+    inputEl.style.display = 'none';
+  }
+
+  confirmBtn.textContent = confirmLabel || '确定';
+  confirmBtn.className = danger ? 'mini-btn-danger' : 'mini-btn-primary';
+
+  function cleanup() {
+    backdrop.classList.remove('open');
+    confirmBtn.removeEventListener('click', handleConfirm);
+    cancelBtn.removeEventListener('click', handleCancel);
+    backdrop.removeEventListener('click', handleBackdropClick);
+    document.removeEventListener('keydown', handleKeydown);
+  }
+  function handleConfirm() {
+    const value = withInput ? inputEl.value.trim() : true;
+    cleanup();
+    if (withInput && !value) return;
+    onConfirm(value);
+  }
+  function handleCancel() { cleanup(); }
+  function handleBackdropClick(e) { if (e.target === backdrop) cleanup(); }
+  function handleKeydown(e) {
+    if (e.key === 'Escape') cleanup();
+    if (e.key === 'Enter' && withInput) handleConfirm();
+  }
+
+  confirmBtn.addEventListener('click', handleConfirm);
+  cancelBtn.addEventListener('click', handleCancel);
+  backdrop.addEventListener('click', handleBackdropClick);
+  document.addEventListener('keydown', handleKeydown);
+
+  backdrop.classList.add('open');
+  if (withInput) { inputEl.focus(); inputEl.select(); }
+}
+
+function renameActiveSession() {
+  if (!activeSession) return;
+  const current = activeSession.label || levelName(activeSession.level);
+  openMiniModal({
+    title: '重命名记录',
+    withInput: true,
+    inputValue: current,
+    confirmLabel: '保存',
+    onConfirm: (value) => {
+      activeSession.label = value;
+      saveHistoryState();
+      updateHistorySelect();
+    }
+  });
+}
+
+function deleteActiveSession() {
+  if (!activeSession) return;
+  const label = activeSession.label || levelName(activeSession.level);
+  openMiniModal({
+    title: '删除记录',
+    text: `确定要删除记录「${label}」吗？删除后将无法恢复。`,
+    confirmLabel: '删除',
+    danger: true,
+    onConfirm: () => {
+      const deletedId = activeSession.id;
+      const deletedLevel = activeSession.level;
+      historyState.sessions = historyState.sessions.filter(s => s.id !== deletedId);
+      activeSession = null;
+      historyState.activeSessionId = null;
+
+      const inStudyMode = document.body.classList.contains('study-mode');
+      const fallback = getLatestSessionForLevel(deletedLevel) || historyState.sessions[0] || null;
+      if (fallback) {
+        activateSession(fallback);
+      } else if (inStudyMode) {
+        const session = createPracticeSession(currentFilter);
+        activateSession(session);
+      } else {
+        studyResults.clear();
+        practiceActiveId = null;
+        updateHistorySelect();
+      }
+
+      saveHistoryState();
+      renderGrid();
+      syncPracticeSelection();
+    }
+  });
+}
+
 function updateFilterButtons() {
   document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.level === currentFilter);
@@ -1007,7 +1270,10 @@ function updateFilterButtons() {
 }
 
 function ensurePracticeSession() {
-  if (activeSession && activeSession.level === currentFilter) return activeSession;
+  if (activeSession && activeSession.level === currentFilter) {
+    loadSessionResults(activeSession);
+    return activeSession;
+  }
   const session = getLatestSessionForLevel(currentFilter) || createPracticeSession(currentFilter);
   activateSession(session);
   return session;
@@ -1048,6 +1314,7 @@ function renderGrid() {
   if (visibleChars.length === 0) {
     container.innerHTML = `<div class="empty"><div class="empty-char">？</div><p>没有找到匹配的汉字</p></div>`;
     practiceActiveId = null;
+    updateScore();
     return;
   }
 
@@ -1075,6 +1342,7 @@ function renderGrid() {
   
   container.innerHTML = html;
   syncPracticeSelection();
+  updateScore();
 }
 
 function cardHTML(c) {
@@ -1120,9 +1388,13 @@ function markCard(event, btn, result) {
   applyCardResult(card, result);
 }
 
+let lastMarkAction = null;
+
 function applyCardResult(card, result) {
   const id = parseInt(card.dataset.id, 10);
   const current = studyResults.get(id);
+
+  lastMarkAction = { id, prevResult: current };
 
   card.classList.remove('revealed');
   card.classList.remove('correct', 'wrong');
@@ -1136,7 +1408,33 @@ function applyCardResult(card, result) {
     card.classList.add(result);
   }
   updateScore();
-  scheduleHistorySave();
+  saveActiveSession(true);
+}
+
+function undoLastMark() {
+  if (!lastMarkAction) return false;
+  const { id, prevResult } = lastMarkAction;
+
+  if (prevResult) {
+    studyResults.set(id, prevResult);
+  } else {
+    studyResults.delete(id);
+  }
+
+  const card = document.querySelector(`.char-card[data-id="${id}"]`);
+  if (card) {
+    card.classList.remove('correct', 'wrong', 'revealed');
+    if (prevResult) card.classList.add(prevResult);
+  }
+
+  setPracticeActive(id);
+  const activeCard = getPracticeActiveCard();
+  if (activeCard) activeCard.scrollIntoView({ block: 'nearest' });
+
+  updateScore();
+  saveActiveSession(true);
+  lastMarkAction = null;
+  return true;
 }
 
 
@@ -1149,11 +1447,42 @@ function updateScore() {
   }
   document.getElementById('score-correct').textContent = String(correct);
   document.getElementById('score-wrong').textContent = String(wrong);
+
+  const accuracyEl = document.getElementById('score-accuracy');
+  const graded = correct + wrong;
+  accuracyEl.textContent = graded > 0 ? `准确率 ${Math.round((correct / graded) * 100)}%` : '';
+
+  const total = visibleChars.length;
+  const markedInView = total ? visibleChars.filter(c => studyResults.has(c.i)).length : 0;
+  const pct = total ? Math.round((markedInView / total) * 100) : 0;
+  document.getElementById('practice-progress-fill').style.width = `${pct}%`;
+  document.getElementById('practice-progress-count').textContent = `${markedInView} / ${total}`;
+
+  if (document.body.classList.contains('study-mode') && total > 0 && markedInView === total) {
+    showPracticeCompleteToast();
+  }
+}
+
+let completeToastTimer = null;
+function showPracticeCompleteToast() {
+  const toast = document.getElementById('practice-complete-toast');
+  if (!toast) return;
+  toast.classList.add('show');
+  clearTimeout(completeToastTimer);
+  completeToastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
 }
 
 function clearCardStates() {
   document.getElementById('score-correct').textContent = '0';
   document.getElementById('score-wrong').textContent = '0';
+  const accuracyEl = document.getElementById('score-accuracy');
+  if (accuracyEl) accuracyEl.textContent = '';
+  const fillEl = document.getElementById('practice-progress-fill');
+  if (fillEl) fillEl.style.width = '0%';
+  const countEl = document.getElementById('practice-progress-count');
+  if (countEl) countEl.textContent = '0 / 0';
+  const toast = document.getElementById('practice-complete-toast');
+  if (toast) toast.classList.remove('show');
   document.querySelectorAll('.char-card').forEach(c => {
     c.classList.remove('correct', 'wrong', 'revealed', 'active');
   });
@@ -1320,15 +1649,23 @@ function handlePracticeKey(e) {
   if (!document.body.classList.contains('study-mode')) return false;
   if (document.getElementById('modal').classList.contains('open')) return false;
   if (document.getElementById('help-modal').classList.contains('open')) return false;
+  if (document.getElementById('mini-modal').classList.contains('open')) return false;
   const tag = e.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT' || e.target.isContentEditable) return false;
 
   const key = e.key.toLowerCase();
   const revealKey = e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter';
   const gradeKey = key === 'j' || key === 'k';
-  if (!revealKey && !gradeKey && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return false;
+  const undoKey = key === 'u' || (e.ctrlKey && key === 'z');
+  if (!revealKey && !gradeKey && !undoKey && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return false;
 
   e.preventDefault();
+
+  if (undoKey) {
+    undoLastMark();
+    return true;
+  }
+
   syncPracticeSelection();
   const card = getPracticeActiveCard();
   if (!card) return true;
@@ -1351,6 +1688,7 @@ function handlePracticeKey(e) {
 
   applyCardResult(card, key === 'j' ? 'correct' : 'wrong');
   advancePracticeCard();
+  saveActiveSession(true);
   return true;
 }
 
@@ -1388,10 +1726,12 @@ function goHome() {
 }
 
 function selectHistorySession(id) {
+  document.getElementById('history-select').blur();
   const session = getSession(id);
   if (!session) return;
   saveActiveSession(true);
   activateSession(session);
+  historyState.practiceMode = true;
   document.body.classList.add('study-mode');
   document.getElementById('btn-normal').classList.remove('active');
   document.getElementById('btn-study').classList.add('active');
@@ -1430,6 +1770,7 @@ function setStudy(on) {
   document.body.classList.toggle('study-mode', on);
   document.getElementById('btn-normal').classList.toggle('active', !on);
   document.getElementById('btn-study').classList.toggle('active', on);
+  historyState.practiceMode = on;
   if (!on) {
     saveActiveSession(true);
     practiceActiveId = null;
@@ -1441,6 +1782,7 @@ function setStudy(on) {
     syncPracticeSelection();
     saveActiveSession(true);
   }
+  saveHistoryState();
   updateHeaderOffset();
 }
 
@@ -1591,7 +1933,11 @@ if (initialSession) {
 } else {
   updateHistorySelect();
 }
-renderGrid();
+if (historyState.practiceMode && initialSession) {
+  setStudy(true);
+} else {
+  renderGrid();
+}
 updateHeaderOffset();
 </script>
 </body>
