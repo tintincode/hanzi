@@ -186,6 +186,8 @@ main {
   transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
   position: relative;
   overflow: hidden;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 128px;
 }
 .char-card:hover {
   transform: translateY(-2px);
@@ -576,7 +578,7 @@ body.study-mode .practice-bar { display: block; }
 body.compact .char-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 0.6rem; }
 body.compact .char-glyph { font-size: 2.2rem; }
 body.compact .char-pinyin { font-size: 0.8rem; }
-body.compact .char-card { padding: 0.65rem 0.5rem; }
+body.compact .char-card { padding: 0.65rem 0.5rem; contain-intrinsic-size: auto 84px; }
 body.compact .card-result-btns { height: 20px; gap: 3px; }
 body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; }
 
@@ -1305,12 +1307,43 @@ function getFiltered() {
   return chars;
 }
 
-function renderGrid() {
+function computeVisibleChars() {
   visibleChars = getFiltered();
+  return visibleChars;
+}
+
+function updateStatsText() {
   document.getElementById('stats').textContent = `显示 ${visibleChars.length.toLocaleString()} 字`;
+}
+
+function buildGridHTML() {
+  // If showing all, split by level with labels
+  if (currentFilter === 'all' && !currentSearch) {
+    const levels = [
+      { key: '1', label: '一级字表', color: '#0f6e56' },
+      { key: '2', label: '二级字表', color: '#e8a020' },
+      { key: '3', label: '三级字表', color: '#c0392b' },
+    ];
+    let html = '';
+    for (const lv of levels) {
+      const [lo, hi] = LEVEL_RANGES[lv.key];
+      const subset = visibleChars.filter(c => c.i >= lo && c.i <= hi);
+      html += `<div class="section-label"><span class="level-dot" style="background:${lv.color}"></span>${lv.label} (${subset.length}字)</div>`;
+      html += `<div class="char-grid">`;
+      html += subset.map(c => cardHTML(c)).join('');
+      html += `</div>`;
+    }
+    return html;
+  }
+  return `<div class="char-grid">${visibleChars.map(c => cardHTML(c)).join('')}</div>`;
+}
+
+function renderGrid() {
+  computeVisibleChars();
+  updateStatsText();
 
   const container = document.getElementById('grid-container');
-  
+
   if (visibleChars.length === 0) {
     container.innerHTML = `<div class="empty"><div class="empty-char">？</div><p>没有找到匹配的汉字</p></div>`;
     practiceActiveId = null;
@@ -1318,29 +1351,7 @@ function renderGrid() {
     return;
   }
 
-  let html = '';
-
-  // If showing all, split by level with labels
-  if (currentFilter === 'all' && !currentSearch) {
-    const levels = [
-      { label: '一级字表', color: '#0f6e56', range: [1, 3500] },
-      { label: '二级字表', color: '#e8a020', range: [3501, 6500] },
-      { label: '三级字表', color: '#c0392b', range: [6501, 8105] },
-    ];
-    for (const lv of levels) {
-      const subset = visibleChars.filter(c => c.i >= lv.range[0] && c.i <= lv.range[1]);
-      html += `<div class="section-label"><span class="level-dot" style="background:${lv.color}"></span>${lv.label} (${subset.length}字)</div>`;
-      html += `<div class="char-grid">`;
-      html += subset.map(c => cardHTML(c)).join('');
-      html += `</div>`;
-    }
-  } else {
-    html += `<div class="char-grid">`;
-    html += visibleChars.map(c => cardHTML(c)).join('');
-    html += `</div>`;
-  }
-  
-  container.innerHTML = html;
+  container.innerHTML = buildGridHTML();
   syncPracticeSelection();
   updateScore();
 }
@@ -1408,7 +1419,7 @@ function applyCardResult(card, result) {
     card.classList.add(result);
   }
   updateScore();
-  saveActiveSession(true);
+  scheduleHistorySave();
 }
 
 function undoLastMark() {
@@ -1432,7 +1443,7 @@ function undoLastMark() {
   if (activeCard) activeCard.scrollIntoView({ block: 'nearest' });
 
   updateScore();
-  saveActiveSession(true);
+  scheduleHistorySave();
   lastMarkAction = null;
   return true;
 }
