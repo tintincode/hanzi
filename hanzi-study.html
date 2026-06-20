@@ -527,34 +527,172 @@ body.study-mode .practice-bar { display: block; }
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
-.history-select {
-  max-width: 220px;
-  padding: 0.28rem 0.55rem;
-  border-radius: 6px;
+.history-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   border: 1px solid var(--border);
   background: var(--surface);
-  color: var(--ink2);
+  border-radius: 8px;
+  height: 30px;
+  padding: 0 0.7rem;
   font-family: inherit;
   font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--ink2);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
-.history-icon-btn {
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 6px;
-  width: 26px;
-  height: 26px;
+.history-toggle-btn:hover { background: var(--border); }
+.history-toggle-btn svg { flex-shrink: 0; }
+.history-toggle-btn .history-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.78rem;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
-  color: var(--ink2);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--teal-light);
+  color: var(--teal);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+/* History panel */
+.history-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(26,23,20,0.55);
+  z-index: 330;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.history-backdrop.open { display: flex; }
+.history-panel {
+  background: var(--surface);
+  border-radius: 16px;
+  width: min(440px, 94vw);
+  max-height: min(560px, 84vh);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.history-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.1rem 0.8rem;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-.history-icon-btn:hover { background: var(--border); }
-.history-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.history-panel-head h3 {
+  font-family: "Noto Serif SC", serif;
+  font-size: 1.02rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+}
+.history-panel-close {
+  border: none;
+  background: none;
+  color: var(--ink3);
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.history-panel-close:hover { background: var(--bg); color: var(--ink); }
+.history-panel-list {
+  overflow-y: auto;
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.history-panel-empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--ink3);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+.history-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.65rem 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  background: var(--surface);
+  text-align: left;
+}
+.history-card:hover { background: var(--bg); }
+.history-card.active {
+  border: 2px solid var(--teal);
+  padding: 0.6rem 0.75rem;
+  background: var(--teal-light);
+}
+.history-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.history-card-title {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-card-meta {
+  font-size: 0.74rem;
+  color: var(--ink3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-card-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.history-card-badge.in-progress { background: var(--teal-light); color: var(--teal); }
+.history-card-badge.done { background: var(--border); color: var(--ink2); }
+.history-card-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.history-card-actions button {
+  border: none;
+  background: none;
+  color: var(--ink3);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+.history-card-actions button:hover { background: var(--surface); color: var(--ink); }
+.history-card.active .history-card-actions button:hover { background: rgba(255,255,255,0.6); }
 .study-score {
   display: flex;
   align-items: center;
@@ -800,7 +938,9 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
     min-width: 0;
   }
   .practice-bar-inner { padding: 0.5rem 0.75rem; }
-  .history-select { max-width: 130px; }
+  .history-toggle-btn span.history-label { display: none; }
+  .history-toggle-btn { padding: 0 0.45rem; }
+  .history-panel { width: min(420px, 96vw); }
   .key-hint { display: none; }
 }
 </style>
@@ -858,13 +998,27 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
       <span class="score-wrong">✗ <span id="score-wrong">0</span></span>
       <span class="score-accuracy" id="score-accuracy"></span>
     </div>
-    <select class="history-select" id="history-select" aria-label="历史记录"></select>
-    <button class="history-icon-btn" id="history-rename-btn" title="重命名记录" aria-label="重命名记录">✏️</button>
-    <button class="history-icon-btn" id="history-delete-btn" title="删除记录" aria-label="删除记录">🗑</button>
+    <button class="history-toggle-btn" id="history-toggle-btn" aria-haspopup="dialog" aria-controls="history-panel">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+      <span class="history-label">历史记录</span>
+      <span class="history-count" id="history-count">0</span>
+    </button>
     <button class="score-reset" id="score-reset-btn">新练习</button>
   </div>
 </div>
 <div class="practice-complete-toast" id="practice-complete-toast">🎉 本组已全部完成！</div>
+
+<div class="history-backdrop" id="history-panel" role="dialog" aria-modal="true" aria-label="历史记录">
+  <div class="history-panel">
+    <div class="history-panel-head">
+      <h3>历史记录</h3>
+      <button class="history-panel-close" id="history-panel-close" aria-label="关闭">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="history-panel-list" id="history-panel-list"></div>
+  </div>
+</div>
 
 <div class="mini-backdrop" id="mini-modal">
   <div class="mini-modal">
@@ -1048,7 +1202,8 @@ const HanziApp = {
     hwWriter: null,
     zhVoice: null,
     voicesReady: false,
-    lastMarkAction: null
+    lastMarkAction: null,
+    historyDirty: false
   },
 
   init() {
@@ -1086,9 +1241,11 @@ const HanziApp = {
       scoreCorrect: document.getElementById('score-correct'),
       scoreWrong: document.getElementById('score-wrong'),
       scoreAccuracy: document.getElementById('score-accuracy'),
-      historySelect: document.getElementById('history-select'),
-      historyRenameBtn: document.getElementById('history-rename-btn'),
-      historyDeleteBtn: document.getElementById('history-delete-btn'),
+      historyToggleBtn: document.getElementById('history-toggle-btn'),
+      historyCount: document.getElementById('history-count'),
+      historyPanel: document.getElementById('history-panel'),
+      historyPanelList: document.getElementById('history-panel-list'),
+      historyPanelClose: document.getElementById('history-panel-close'),
       scoreResetBtn: document.getElementById('score-reset-btn'),
       practiceCompleteToast: document.getElementById('practice-complete-toast'),
       siteTitleBtn: document.getElementById('site-title-btn'),
@@ -1232,9 +1389,9 @@ const HanziApp = {
       if (e.target === this.dom.helpModal) this.closeHelp();
     });
 
-    this.dom.historySelect.addEventListener('change', (e) => this.selectHistorySession(e.target.value));
-    this.dom.historyRenameBtn.addEventListener('click', () => this.renameActiveSession());
-    this.dom.historyDeleteBtn.addEventListener('click', () => this.deleteActiveSession());
+    this.dom.historyToggleBtn.addEventListener('click', () => this.openHistoryPanel());
+    this.dom.historyPanelClose.addEventListener('click', () => this.closeHistoryPanel());
+    this.dom.historyPanel.addEventListener('click', (e) => { if (e.target === this.dom.historyPanel) this.closeHistoryPanel(); });
     this.dom.scoreResetBtn.addEventListener('click', () => this.startNewPracticeSession());
     this.dom.siteTitleBtn.addEventListener('click', () => this.goHome());
 
@@ -1420,6 +1577,7 @@ const HanziApp = {
       card.classList.add(result);
     }
     this.updateScore();
+    this.state.historyDirty = true;
     this.scheduleHistorySave();
   },
 
@@ -1444,6 +1602,7 @@ const HanziApp = {
     if (activeCard) activeCard.scrollIntoView({ block: 'nearest' });
 
     this.updateScore();
+    this.state.historyDirty = true;
     this.scheduleHistorySave();
     this.state.lastMarkAction = null;
     return true;
@@ -1530,6 +1689,13 @@ const HanziApp = {
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (parsed && parsed.version === 1 && Array.isArray(parsed.sessions)) {
+        // One-time cleanup: drop empty sessions saved by older versions of the
+        // app (e.g. created by opening practice mode without marking anything).
+        const before = parsed.sessions.length;
+        parsed.sessions = parsed.sessions.filter(s => Object.keys(s.results || {}).length > 0);
+        if (parsed.sessions.length !== before && !parsed.sessions.some(s => s.id === parsed.activeSessionId)) {
+          parsed.activeSessionId = null;
+        }
         this.state.historyState = parsed;
       }
     } catch (e) {
@@ -1569,6 +1735,12 @@ const HanziApp = {
     return level === 'all' ? '全部' : (names[level] || `${level}级`);
   },
 
+  levelTotal(level) {
+    if (level === 'all') return this.allChars.length;
+    const range = this.constants.LEVEL_RANGES[level];
+    return range ? (range[1] - range[0] + 1) : 0;
+  },
+
   formatSessionTime(ts) {
     const date = new Date(ts);
     const pad = n => String(n).padStart(2, '0');
@@ -1588,21 +1760,26 @@ const HanziApp = {
       wrong: 0,
       results: {}
     };
-    this.state.historyState.sessions.unshift(session);
-    this.state.historyState.activeSessionId = session.id;
+    // Not added to historyState.sessions / persisted yet — only happens once the
+    // first card is actually marked, in saveActiveSession(). This avoids
+    // littering history with empty sessions from opening practice mode or
+    // pressing "新练习" without reviewing anything.
     this.state.activeSession = session;
-    this.trimHistorySessions();
-    this.saveHistoryState();
+    this.state.historyState.activeSessionId = session.id;
     this.updateHistorySelect();
     return session;
   },
 
   trimHistorySessions() {
-    this.state.historyState.sessions.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    this.state.historyState.sessions = this.state.historyState.sessions.slice(0, this.constants.MAX_HISTORY_SESSIONS);
-    if (this.state.activeSession && !this.state.historyState.sessions.some(s => s.id === this.state.activeSession.id)) {
-      this.state.activeSession = this.state.historyState.sessions[0] || null;
-      this.state.historyState.activeSessionId = this.state.activeSession ? this.state.activeSession.id : null;
+    const sessions = this.state.historyState.sessions;
+    sessions.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    if (sessions.length > this.constants.MAX_HISTORY_SESSIONS) {
+      const activeId = this.state.activeSession ? this.state.activeSession.id : null;
+      const kept = [];
+      for (const s of sessions) {
+        if (kept.length < this.constants.MAX_HISTORY_SESSIONS || s.id === activeId) kept.push(s);
+      }
+      this.state.historyState.sessions = kept;
     }
   },
 
@@ -1644,7 +1821,12 @@ const HanziApp = {
     clearTimeout(this.state.historySaveTimer);
     if (!this.state.activeSession) return;
     if (!force && !document.body.classList.contains('study-mode')) return;
-    
+    // A forced flush (e.g. switching the level filter) shouldn't touch the
+    // session's updatedAt / re-sort history if nothing was actually marked
+    // since the last save — otherwise just clicking between level tabs
+    // reshuffles the history list with no new practice happening.
+    if (!this.state.historyDirty) return;
+
     const results = {};
     let correct = 0;
     let wrong = 0;
@@ -1664,23 +1846,98 @@ const HanziApp = {
     this.state.activeSession.wrong = wrong;
     this.state.activeSession.updatedAt = Date.now();
     this.state.historyState.activeSessionId = this.state.activeSession.id;
+    this.state.historyDirty = false;
+
+    const hasProgress = Object.keys(results).length > 0;
+    const alreadyTracked = this.state.historyState.sessions.some(s => s.id === this.state.activeSession.id);
+    if (!hasProgress) {
+      // Nothing has been marked yet — don't litter history with an empty entry.
+      // (If it was already tracked from a previous mark that got reset, leave
+      // it in place; we only skip *adding* new empty sessions.)
+      if (!alreadyTracked) return;
+    } else if (!alreadyTracked) {
+      this.state.historyState.sessions.unshift(this.state.activeSession);
+    }
+
     this.saveHistoryState();
     this.updateHistorySelect();
   },
 
   updateHistorySelect() {
-    const hasSessions = this.state.historyState.sessions.length > 0;
-    this.dom.historyRenameBtn.disabled = !hasSessions;
-    this.dom.historyDeleteBtn.disabled = !hasSessions;
-    if (!hasSessions) {
-      this.dom.historySelect.innerHTML = '<option value="">暂无记录</option>';
+    const count = this.state.historyState.sessions.length;
+    this.dom.historyCount.textContent = count;
+    this.dom.historyCount.style.display = count > 0 ? '' : 'none';
+    if (this.dom.historyPanel.classList.contains('open')) this.renderHistoryPanelList();
+  },
+
+  openHistoryPanel() {
+    this.renderHistoryPanelList();
+    this.dom.historyPanel.classList.add('open');
+    document.addEventListener('keydown', this.handleHistoryPanelKeydown);
+  },
+
+  closeHistoryPanel() {
+    this.dom.historyPanel.classList.remove('open');
+    document.removeEventListener('keydown', this.handleHistoryPanelKeydown);
+  },
+
+  handleHistoryPanelKeydown(e) {
+    if (e.key === 'Escape') HanziApp.closeHistoryPanel();
+  },
+
+  renderHistoryPanelList() {
+    const sessions = [...this.state.historyState.sessions].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    if (sessions.length === 0) {
+      this.dom.historyPanelList.innerHTML = '<div class="history-panel-empty">暂无练习记录<br>开始练习模式后会自动保存进度</div>';
       return;
     }
-    this.dom.historySelect.innerHTML = this.state.historyState.sessions.map(session => {
+    const iconEdit = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    const iconDelete = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+    this.dom.historyPanelList.innerHTML = sessions.map(session => {
       const reviewed = Object.keys(session.results || {}).length;
-      const label = `${session.label || this.levelName(session.level)} · ${reviewed}字 · 对${session.correct || 0}/错${session.wrong || 0}`;
-      return `<option value="${session.id}" ${session.id === this.state.historyState.activeSessionId ? 'selected' : ''}>${label}</option>`;
+      const accuracy = (session.correct || 0) + (session.wrong || 0) > 0
+        ? `${Math.round((session.correct || 0) / ((session.correct || 0) + (session.wrong || 0)) * 100)}%`
+        : '—';
+      const isActive = session.id === this.state.historyState.activeSessionId;
+      const total = this.levelTotal(session.level);
+      const isComplete = total > 0 && reviewed >= total;
+      const title = session.label || this.levelName(session.level);
+      const meta = `${reviewed}/${total} 字 · 正确率 ${accuracy} · 对${session.correct || 0} / 错${session.wrong || 0}`;
+      return `
+        <div class="history-card${isActive ? ' active' : ''}" data-session-id="${session.id}" role="button" tabindex="0">
+          <div class="history-card-main">
+            <span class="history-card-title">${this.escapeHtml(title)}</span>
+            <span class="history-card-meta">${meta}</span>
+          </div>
+          <span class="history-card-badge ${isComplete ? 'done' : 'in-progress'}">${isComplete ? '已完成' : '进行中'}</span>
+          <div class="history-card-actions">
+            <button class="history-rename-btn" data-session-id="${session.id}" title="重命名" aria-label="重命名记录">${iconEdit}</button>
+            <button class="history-delete-btn" data-session-id="${session.id}" title="删除" aria-label="删除记录">${iconDelete}</button>
+          </div>
+        </div>`;
     }).join('');
+
+    this.dom.historyPanelList.querySelectorAll('.history-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.history-rename-btn') || e.target.closest('.history-delete-btn')) return;
+        this.selectHistorySession(card.dataset.sessionId);
+      });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.selectHistorySession(card.dataset.sessionId); }
+      });
+    });
+    this.dom.historyPanelList.querySelectorAll('.history-rename-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); this.renameSession(btn.dataset.sessionId); });
+    });
+    this.dom.historyPanelList.querySelectorAll('.history-delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); this.deleteSession(btn.dataset.sessionId); });
+    });
+  },
+
+  escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   },
 
   updateFilterButtons() {
@@ -1750,66 +2007,73 @@ const HanziApp = {
     if (withInput) { inputEl.focus(); inputEl.select(); }
   },
 
-  renameActiveSession() {
-    if (!this.state.activeSession) return;
-    const current = this.state.activeSession.label || this.levelName(this.state.activeSession.level);
+  renameSession(id) {
+    const session = this.getSession(id);
+    if (!session) return;
+    const current = session.label || this.levelName(session.level);
     this.openMiniModal({
       title: '重命名记录',
       withInput: true,
       inputValue: current,
       confirmLabel: '保存',
       onConfirm: (value) => {
-        this.state.activeSession.label = value;
+        session.label = value;
         this.saveHistoryState();
         this.updateHistorySelect();
+        if (this.dom.historyPanel.classList.contains('open')) this.renderHistoryPanelList();
       }
     });
   },
 
-  deleteActiveSession() {
-    if (!this.state.activeSession) return;
-    const label = this.state.activeSession.label || this.levelName(this.state.activeSession.level);
+  deleteSession(id) {
+    const session = this.getSession(id);
+    if (!session) return;
+    const label = session.label || this.levelName(session.level);
     this.openMiniModal({
       title: '删除记录',
       text: `确定要删除记录「${label}」吗？删除后将无法恢复。`,
       confirmLabel: '删除',
       danger: true,
       onConfirm: () => {
-        const deletedId = this.state.activeSession.id;
-        const deletedLevel = this.state.activeSession.level;
+        const deletedId = session.id;
+        const deletedLevel = session.level;
+        const wasActive = this.state.activeSession && this.state.activeSession.id === deletedId;
         this.state.historyState.sessions = this.state.historyState.sessions.filter(s => s.id !== deletedId);
-        this.state.activeSession = null;
-        this.state.historyState.activeSessionId = null;
 
-        const inStudyMode = document.body.classList.contains('study-mode');
-        const fallback = this.getLatestSessionForLevel(deletedLevel) || this.state.historyState.sessions[0] || null;
-        if (fallback) {
-          this.activateSession(fallback);
-        } else if (inStudyMode) {
-          const session = this.createPracticeSession(this.state.currentFilter);
-          this.activateSession(session);
-        } else {
-          this.state.studyResults.clear();
-          this.state.practiceActiveId = null;
-          this.updateHistorySelect();
+        if (wasActive) {
+          this.state.activeSession = null;
+          this.state.historyState.activeSessionId = null;
+          const inStudyMode = document.body.classList.contains('study-mode');
+          const fallback = this.getLatestSessionForLevel(deletedLevel) || this.state.historyState.sessions[0] || null;
+          if (fallback) {
+            this.activateSession(fallback);
+          } else if (inStudyMode) {
+            const newSession = this.createPracticeSession(this.state.currentFilter);
+            this.activateSession(newSession);
+          } else {
+            this.state.studyResults.clear();
+            this.state.practiceActiveId = null;
+            this.updateHistorySelect();
+          }
+          this.renderGrid(true);
         }
 
         this.saveHistoryState();
-        this.renderGrid(true);
+        if (this.dom.historyPanel.classList.contains('open')) this.renderHistoryPanelList();
       }
     });
   },
 
   selectHistorySession(id) {
-    this.dom.historySelect.blur();
     const session = this.getSession(id);
     if (!session) return;
+    this.closeHistoryPanel();
     this.saveActiveSession(true);
     this.activateSession(session);
     this.state.historyState.practiceMode = true;
     document.body.classList.add('study-mode');
     this.dom.btnNormal.classList.remove('active');
-    this.dom.btnStudy.add('active');
+    this.dom.btnStudy.classList.add('active');
     this.renderGrid(true);
     this.saveHistoryState();
     this.updateHeaderOffset();
@@ -1969,6 +2233,7 @@ const HanziApp = {
     if (this.dom.modal.classList.contains('open')) return false;
     if (this.dom.helpModal.classList.contains('open')) return false;
     if (document.getElementById('mini-modal').classList.contains('open')) return false;
+    if (this.dom.historyPanel.classList.contains('open')) return false;
     
     const tag = e.target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT' || e.target.isContentEditable) return false;
