@@ -450,6 +450,13 @@ body.study-mode .char-card.active.wrong .card-result-btns {
   font-size: 0.6rem;
   color: inherit;
   opacity: 0.55;
+  display: none;
+}
+/* J/K shortcuts only ever act on the active practice card, so only show
+   the hint there — showing it on every card implies a per-card shortcut
+   that doesn't exist. */
+.char-card.active .key-hint {
+  display: inline;
 }
 
 /* Score counter in header */
@@ -1673,6 +1680,21 @@ const HanziApp = {
     return null;
   },
 
+  scrollToPracticeCard(id) {
+    if (!id) return;
+    const idx = this.state.visibleChars.findIndex(c => c.i === id);
+    if (idx === -1) return;
+    // The grid renders in chunks as you scroll (infinite scroll), so the
+    // target card may not exist in the DOM yet — render forward until it does.
+    while (this.state.renderedCount <= idx && this.state.renderedCount < this.state.visibleChars.length) {
+      this.renderNextChunk();
+    }
+    requestAnimationFrame(() => {
+      const card = this.getPracticeActiveCard();
+      if (card) card.scrollIntoView({ block: 'center' });
+    });
+  },
+
   advancePracticeCard() {
     if (!this.state.visibleChars.length || !this.state.practiceActiveId) return;
     const currentIdx = this.state.visibleChars.findIndex(c => c.i === this.state.practiceActiveId);
@@ -2074,9 +2096,10 @@ const HanziApp = {
     document.body.classList.add('study-mode');
     this.dom.btnNormal.classList.remove('active');
     this.dom.btnStudy.classList.add('active');
-    this.renderGrid(true);
+    this.renderGrid(false);
     this.saveHistoryState();
     this.updateHeaderOffset();
+    this.scrollToPracticeCard(this.state.practiceActiveId);
   },
 
   startNewPracticeSession() {
@@ -2174,8 +2197,9 @@ const HanziApp = {
       this.clearCardStates();
     } else {
       this.ensurePracticeSession();
-      this.renderGrid(true);
+      this.renderGrid(false);
       this.saveActiveSession(true);
+      this.scrollToPracticeCard(this.state.practiceActiveId);
     }
     this.saveHistoryState();
     this.updateHeaderOffset();
@@ -2349,14 +2373,7 @@ const HanziApp = {
 
   speakChar(event, char) {
     event.stopPropagation();
-    const card = event.currentTarget.closest('.char-card');
-    if (document.body.classList.contains('study-mode') && card) {
-      this.setPracticeActive(parseInt(card.dataset.id, 10));
-      if (!card.classList.contains('correct') && !card.classList.contains('wrong')) {
-        card.classList.add('revealed');
-      }
-      return;
-    }
+    const card = event.target.closest('.char-card');
     const pinyins = this.getPinyinsForChar(char);
     if (card) {
       card.classList.add('speaking');
