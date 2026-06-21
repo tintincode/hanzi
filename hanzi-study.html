@@ -1284,7 +1284,8 @@ const HanziApp = {
     voicesReady: false,
     lastMarkAction: null,
     wrongOnly: false,
-    historyDirty: false
+    historyDirty: false,
+    isStudyMode: false
   },
 
   init() {
@@ -1390,7 +1391,7 @@ const HanziApp = {
         this.state.currentSearch = e.target.value.trim();
         this.state.practiceActiveId = null;
         this.renderGrid(true);
-        if (document.body.classList.contains('study-mode')) this.scheduleHistorySave();
+        if (this.state.isStudyMode) this.scheduleHistorySave();
       }, 200);
     });
 
@@ -1401,7 +1402,7 @@ const HanziApp = {
       document.querySelectorAll('.filter-btn[data-level]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
 
-      if (document.body.classList.contains('study-mode')) {
+      if (this.state.isStudyMode) {
         if (this.state.activeSession && this.state.studyResults.size === 0) {
           this.state.historyState.sessions = this.state.historyState.sessions.filter(s => s.id !== this.state.activeSession.id);
           this.state.activeSession = null;
@@ -1414,7 +1415,7 @@ const HanziApp = {
       this.state.currentFilter = btn.dataset.level;
       this.state.practiceActiveId = null;
 
-      if (document.body.classList.contains('study-mode')) {
+      if (this.state.isStudyMode) {
         const session = this.getLatestSessionForLevel(this.state.currentFilter) || this.createPracticeSession(this.state.currentFilter);
         this.activateSession(session);
       }
@@ -1441,7 +1442,7 @@ const HanziApp = {
 
       if (glyph) {
         e.stopPropagation();
-        if (document.body.classList.contains('study-mode')) {
+        if (this.state.isStudyMode) {
           this.setPracticeActive(cardId);
           if (!card.classList.contains('correct') && !card.classList.contains('wrong')) {
             card.classList.add('revealed');
@@ -1452,7 +1453,7 @@ const HanziApp = {
         return;
       }
 
-      if (document.body.classList.contains('study-mode')) {
+      if (this.state.isStudyMode) {
         this.setPracticeActive(cardId);
         if (!card.classList.contains('correct') && !card.classList.contains('wrong')) {
           card.classList.add('revealed');
@@ -1634,7 +1635,7 @@ const HanziApp = {
     const isMulti = pinyins.length > 1;
     const result = this.state.studyResults.get(c.i);
     const resultClass = result ? ` ${result}` : '';
-    const activeClass = document.body.classList.contains('study-mode') && c.i === this.state.practiceActiveId ? ' active' : '';
+    const activeClass = this.state.isStudyMode && c.i === this.state.practiceActiveId ? ' active' : '';
     const pyHTML = isMulti
       ? `<div class="char-pinyin multi multi-pinyins">${pinyins.map(p => `<span>${p}</span>`).join('')}</div>`
       : `<div class="char-pinyin">${pinyins[0] || ''}</div>`;
@@ -1698,8 +1699,8 @@ const HanziApp = {
       }
     }
 
+    const activeCard = this.ensureCardRendered(id);
     this.setPracticeActive(id);
-    const activeCard = this.getPracticeActiveCard();
     if (activeCard) activeCard.scrollIntoView({ block: 'nearest' });
 
     this.updateScore();
@@ -1733,7 +1734,7 @@ const HanziApp = {
     // The wrong-only view always has markedInView === total (every visible
     // card is already graded "wrong"), so the completion toast would fire
     // spuriously while just reviewing mistakes — only show it for the full set.
-    if (document.body.classList.contains('study-mode') && !this.state.wrongOnly && total > 0 && markedInView === total) {
+    if (this.state.isStudyMode && !this.state.wrongOnly && total > 0 && markedInView === total) {
       this.showPracticeCompleteToast();
     }
   },
@@ -1745,7 +1746,7 @@ const HanziApp = {
   },
 
   syncPracticeSelection() {
-    if (!document.body.classList.contains('study-mode')) return;
+    if (!this.state.isStudyMode) return;
     if (!this.state.visibleChars.some(c => c.i === this.state.practiceActiveId)) {
       this.state.practiceActiveId = this.getNextUnmarkedId(0) || (this.state.visibleChars[0] && this.state.visibleChars[0].i) || null;
     }
@@ -1755,7 +1756,7 @@ const HanziApp = {
   setPracticeActive(id) {
     this.state.practiceActiveId = id;
     this.applyPracticeActive();
-    if (document.body.classList.contains('study-mode')) this.scheduleHistorySave();
+    if (this.state.isStudyMode) this.scheduleHistorySave();
   },
 
   applyPracticeActive() {
@@ -1779,19 +1780,29 @@ const HanziApp = {
     return null;
   },
 
-  scrollToPracticeCard(id) {
-    if (!id) return;
+  ensureCardRendered(id) {
+    if (!id) return null;
     const idx = this.state.visibleChars.findIndex(c => c.i === id);
-    if (idx === -1) return;
+    if (idx === -1) return null;
     // The grid renders in chunks as you scroll (infinite scroll), so the
     // target card may not exist in the DOM yet — render forward until it does.
     while (this.state.renderedCount <= idx && this.state.renderedCount < this.state.visibleChars.length) {
       this.renderNextChunk();
     }
-    requestAnimationFrame(() => {
-      const card = this.getPracticeActiveCard();
-      if (card) card.scrollIntoView({ block: 'center' });
-    });
+    return document.querySelector(`.char-card[data-id="${id}"]`);
+  },
+
+  scrollToPracticeCard(id) {
+    const card = this.ensureCardRendered(id);
+    if (!card) return;
+    // The card may have just been lazily rendered for the first time, after
+    // applyPracticeActive() already ran and found nothing to highlight —
+    // make sure the highlight actually lands on it now that it exists.
+    if (id === this.state.practiceActiveId) {
+      document.querySelectorAll('.char-card.active').forEach(el => el.classList.remove('active'));
+      card.classList.add('active');
+    }
+    requestAnimationFrame(() => card.scrollIntoView({ block: 'center' }));
   },
 
   advancePracticeCard() {
@@ -1799,8 +1810,8 @@ const HanziApp = {
     const currentIdx = this.state.visibleChars.findIndex(c => c.i === this.state.practiceActiveId);
     const nextId = this.getNextUnmarkedId(currentIdx + 1);
     if (!nextId) return;
+    const card = this.ensureCardRendered(nextId);
     this.setPracticeActive(nextId);
-    const card = this.getPracticeActiveCard();
     if (card) card.scrollIntoView({ block: 'nearest' });
   },
 
@@ -1943,7 +1954,7 @@ const HanziApp = {
   saveActiveSession(force = false) {
     clearTimeout(this.state.historySaveTimer);
     if (!this.state.activeSession) return;
-    if (!force && !document.body.classList.contains('study-mode')) return;
+    if (!force && !this.state.isStudyMode) return;
     // A forced flush (e.g. switching the level filter) shouldn't touch the
     // session's updatedAt / re-sort history if nothing was actually marked
     // since the last save — otherwise just clicking between level tabs
@@ -2166,7 +2177,7 @@ const HanziApp = {
         if (wasActive) {
           this.state.activeSession = null;
           this.state.historyState.activeSessionId = null;
-          const inStudyMode = document.body.classList.contains('study-mode');
+          const inStudyMode = this.state.isStudyMode;
           const fallback = this.getLatestSessionForLevel(deletedLevel) || this.state.historyState.sessions[0] || null;
           if (fallback) {
             this.activateSession(fallback);
@@ -2195,6 +2206,7 @@ const HanziApp = {
     this.activateSession(session);
     this.state.historyState.practiceMode = true;
     document.body.classList.add('study-mode');
+    this.state.isStudyMode = true;
     this.dom.btnNormal.classList.remove('active');
     this.dom.btnStudy.classList.add('active');
     this.renderGrid(false);
@@ -2237,7 +2249,7 @@ const HanziApp = {
     this.initStrokes(c.c);
 
     document.querySelectorAll('.char-card.active').forEach(el => el.classList.remove('active'));
-    const activeEl = document.querySelector(`.char-card[data-id="${c.i}"]`);
+    const activeEl = this.ensureCardRendered(c.i);
     if (activeEl) { activeEl.classList.add('active'); activeEl.scrollIntoView({ block: 'nearest' }); }
   },
 
@@ -2288,6 +2300,7 @@ const HanziApp = {
 
   setStudy(on) {
     document.body.classList.toggle('study-mode', on);
+    this.state.isStudyMode = on;
     this.dom.btnNormal.classList.toggle('active', !on);
     this.dom.btnStudy.classList.toggle('active', on);
     this.state.historyState.practiceMode = on;
@@ -2318,8 +2331,7 @@ const HanziApp = {
     this.dom.wrongFilterBtn.setAttribute('aria-pressed', String(this.state.wrongOnly));
     this.renderGrid(true);
     if (this.state.wrongOnly) {
-      const card = this.getPracticeActiveCard();
-      if (card) card.scrollIntoView({ block: 'center' });
+      this.scrollToPracticeCard(this.state.practiceActiveId);
     }
   },
 
@@ -2364,7 +2376,7 @@ const HanziApp = {
   },
 
   handlePracticeKey(e) {
-    if (!document.body.classList.contains('study-mode')) return false;
+    if (!this.state.isStudyMode) return false;
     if (this.dom.modal.classList.contains('open')) return false;
     if (this.dom.helpModal.classList.contains('open')) return false;
     if (document.getElementById('mini-modal').classList.contains('open')) return false;
@@ -2416,8 +2428,9 @@ const HanziApp = {
     if (!this.state.visibleChars.length) return;
     const currentIdx = Math.max(0, this.state.visibleChars.findIndex(c => c.i === this.state.practiceActiveId));
     const nextIdx = (currentIdx + dir + this.state.visibleChars.length) % this.state.visibleChars.length;
-    this.setPracticeActive(this.state.visibleChars[nextIdx].i);
-    const card = this.getPracticeActiveCard();
+    const nextId = this.state.visibleChars[nextIdx].i;
+    const card = this.ensureCardRendered(nextId);
+    this.setPracticeActive(nextId);
     if (card) card.scrollIntoView({ block: 'nearest' });
   },
 
