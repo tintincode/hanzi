@@ -534,6 +534,50 @@ body.study-mode .practice-bar { display: block; }
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+.wrong-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  height: 30px;
+  padding: 0 0.7rem;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--ink2);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.wrong-filter-btn svg { flex-shrink: 0; }
+.wrong-filter-btn:hover { background: var(--border); }
+.wrong-filter-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.wrong-filter-btn:disabled:hover { background: var(--surface); }
+.wrong-filter-btn .wrong-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #fdf0ee;
+  color: #c0392b;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.wrong-filter-btn[aria-pressed="true"] {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: white;
+}
+.wrong-filter-btn[aria-pressed="true"] svg { color: white; }
+.wrong-filter-btn[aria-pressed="true"] .wrong-filter-count {
+  background: rgba(255,255,255,0.25);
+  color: white;
+}
 .history-toggle-btn {
   display: inline-flex;
   align-items: center;
@@ -785,7 +829,7 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   position: fixed;
   inset: 0;
   background: rgba(26,23,20,0.55);
-  z-index: 320;
+  z-index: 340;
   align-items: center;
   justify-content: center;
   padding: 1rem;
@@ -947,6 +991,8 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   .practice-bar-inner { padding: 0.5rem 0.75rem; }
   .history-toggle-btn span.history-label { display: none; }
   .history-toggle-btn { padding: 0 0.45rem; }
+  .wrong-filter-btn span.wrong-filter-label { display: none; }
+  .wrong-filter-btn { padding: 0 0.45rem; }
   .history-panel { width: min(420px, 96vw); }
   .key-hint { display: none; }
 }
@@ -1005,6 +1051,11 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
       <span class="score-wrong">✗ <span id="score-wrong">0</span></span>
       <span class="score-accuracy" id="score-accuracy"></span>
     </div>
+    <button class="wrong-filter-btn" id="wrong-filter-btn" title="只看错题" aria-pressed="false">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      <span class="wrong-filter-label">只看错题</span>
+      <span class="wrong-filter-count" id="wrong-filter-count">0</span>
+    </button>
     <button class="history-toggle-btn" id="history-toggle-btn" aria-haspopup="dialog" aria-controls="history-panel">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
       <span class="history-label">历史记录</span>
@@ -1151,7 +1202,7 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
         </div>
         <div class="help-text">
           <strong>练习模式 — 隐藏拼音</strong>
-          <span>点击顶栏「练习模式」后，所有拼音会被隐藏。悬停或点击字卡可显示拼音，适合自我测验。</span>
+          <span>点击顶栏「练习模式」后，所有拼音会被隐藏。悬停或点击字卡可显示拼音及「对／错」标记按钮，适合自我测验。</span>
         </div>
       </div>
       <div class="help-row">
@@ -1170,6 +1221,28 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
         <div class="help-text">
           <strong>紧凑视图</strong>
           <span>点击「紧凑」切换到小字模式，一屏可显示更多汉字，适合快速浏览。</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title">历史记录与错题复习</div>
+      <div class="help-row">
+        <div class="help-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+        </div>
+        <div class="help-text">
+          <strong>历史记录</strong>
+          <span>练习模式下点击「历史记录」可查看以往的练习进度，点击任意一条即可继续上次练习，并自动定位到上次停留的字卡。也可重命名或删除记录。</span>
+        </div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <div class="help-text">
+          <strong>只看错题</strong>
+          <span>点击「只看错题」可筛选出本次练习中标记错误的汉字，方便集中复习。答对后会自动从错题列表中移除。</span>
         </div>
       </div>
     </div>
@@ -1210,12 +1283,14 @@ const HanziApp = {
     zhVoice: null,
     voicesReady: false,
     lastMarkAction: null,
+    wrongOnly: false,
     historyDirty: false
   },
 
   init() {
     this.allChars = ALL_CHARS; // Start with fast offline mock data
     this.charMap = new Map(this.allChars.map(c => [c.c, c]));
+    this.buildPinyinIndex();
     this.cacheDOM();
     this.loadHistoryState();
     this.bindEvents();
@@ -1248,6 +1323,8 @@ const HanziApp = {
       scoreCorrect: document.getElementById('score-correct'),
       scoreWrong: document.getElementById('score-wrong'),
       scoreAccuracy: document.getElementById('score-accuracy'),
+      wrongFilterBtn: document.getElementById('wrong-filter-btn'),
+      wrongFilterCount: document.getElementById('wrong-filter-count'),
       historyToggleBtn: document.getElementById('history-toggle-btn'),
       historyCount: document.getElementById('history-count'),
       historyPanel: document.getElementById('history-panel'),
@@ -1296,6 +1373,7 @@ const HanziApp = {
         // Quietly hot-reload application state
         this.allChars = fullDatabase;
         this.charMap = new Map(fullDatabase.map(c => [c.c, c]));
+        this.buildPinyinIndex();
         
         // Trigger non-blocking view render
         this.renderGrid(false);
@@ -1396,6 +1474,7 @@ const HanziApp = {
       if (e.target === this.dom.helpModal) this.closeHelp();
     });
 
+    this.dom.wrongFilterBtn.addEventListener('click', () => this.toggleWrongOnly());
     this.dom.historyToggleBtn.addEventListener('click', () => this.openHistoryPanel());
     this.dom.historyPanelClose.addEventListener('click', () => this.closeHistoryPanel());
     this.dom.historyPanel.addEventListener('click', (e) => { if (e.target === this.dom.historyPanel) this.closeHistoryPanel(); });
@@ -1458,6 +1537,9 @@ const HanziApp = {
         c.p.some(p => p === q || p.startsWith(q) || this.stripTones(p).startsWith(qStripped)) ||
         c.p.join('/').includes(q)
       );
+    }
+    if (this.state.wrongOnly) {
+      chars = chars.filter(c => this.state.studyResults.get(c.i) === 'wrong');
     }
     return chars;
   },
@@ -1586,6 +1668,12 @@ const HanziApp = {
     this.updateScore();
     this.state.historyDirty = true;
     this.scheduleHistorySave();
+
+    if (this.state.wrongOnly && this.state.studyResults.get(id) !== 'wrong') {
+      // The card just regraded away from "wrong" — drop it from the
+      // wrong-only review list instead of leaving it dangling in view.
+      this.renderGrid();
+    }
   },
 
   undoLastMark() {
@@ -1598,10 +1686,16 @@ const HanziApp = {
       this.state.studyResults.delete(id);
     }
 
-    const card = document.querySelector(`.char-card[data-id="${id}"]`);
-    if (card) {
-      card.classList.remove('correct', 'wrong', 'revealed');
-      if (prevResult) card.classList.add(prevResult);
+    if (this.state.wrongOnly) {
+      // Re-render first so the restored card actually exists in the
+      // filtered (wrong-only) DOM before we try to focus/scroll to it.
+      this.renderGrid();
+    } else {
+      const card = document.querySelector(`.char-card[data-id="${id}"]`);
+      if (card) {
+        card.classList.remove('correct', 'wrong', 'revealed');
+        if (prevResult) card.classList.add(prevResult);
+      }
     }
 
     this.setPracticeActive(id);
@@ -1624,6 +1718,8 @@ const HanziApp = {
     }
     this.dom.scoreCorrect.textContent = String(correct);
     this.dom.scoreWrong.textContent = String(wrong);
+    this.dom.wrongFilterCount.textContent = String(wrong);
+    this.dom.wrongFilterBtn.disabled = wrong === 0 && !this.state.wrongOnly;
 
     const graded = correct + wrong;
     this.dom.scoreAccuracy.textContent = graded > 0 ? `准确率 ${Math.round((correct / graded) * 100)}%` : '';
@@ -1634,7 +1730,10 @@ const HanziApp = {
     this.dom.practiceProgressFill.style.width = `${pct}%`;
     this.dom.practiceProgressCount.textContent = `${markedInView} / ${total}`;
 
-    if (document.body.classList.contains('study-mode') && total > 0 && markedInView === total) {
+    // The wrong-only view always has markedInView === total (every visible
+    // card is already graded "wrong"), so the completion toast would fire
+    // spuriously while just reviewing mistakes — only show it for the full set.
+    if (document.body.classList.contains('study-mode') && !this.state.wrongOnly && total > 0 && markedInView === total) {
       this.showPracticeCompleteToast();
     }
   },
@@ -1822,6 +1921,8 @@ const HanziApp = {
     this.state.currentFilter = session.level || 'all';
     this.state.currentSearch = '';
     this.dom.search.value = '';
+    this.state.wrongOnly = false;
+    this.dom.wrongFilterBtn.setAttribute('aria-pressed', 'false');
     this.updateFilterButtons();
     this.loadSessionResults(session);
     this.updateHistorySelect();
@@ -2212,6 +2313,16 @@ const HanziApp = {
     this.updateHeaderOffset();
   },
 
+  toggleWrongOnly() {
+    this.state.wrongOnly = !this.state.wrongOnly;
+    this.dom.wrongFilterBtn.setAttribute('aria-pressed', String(this.state.wrongOnly));
+    this.renderGrid(true);
+    if (this.state.wrongOnly) {
+      const card = this.getPracticeActiveCard();
+      if (card) card.scrollIntoView({ block: 'center' });
+    }
+  },
+
   clearCardStates() {
     this.dom.scoreCorrect.textContent = '0';
     this.dom.scoreWrong.textContent = '0';
@@ -2310,6 +2421,30 @@ const HanziApp = {
     if (card) card.scrollIntoView({ block: 'nearest' });
   },
 
+  buildPinyinIndex() {
+    // Maps a pinyin reading (e.g. "bǔ") to a real character that uses that
+    // exact reading. Bare romanized pinyin is unreliable TTS input — even
+    // genuine Chinese voices are trained on real Chinese text, not isolated
+    // romanization, and often mishandle or spell out short pinyin syllables
+    // letter-by-letter. Speaking an actual character with that pronunciation
+    // is far more reliable than speaking the romanized syllable itself.
+    this.pinyinIndex = new Map();
+    // Prefer single-pronunciation characters first — unambiguous, so the
+    // reading we hear is guaranteed to be the one we looked up.
+    for (const c of this.allChars) {
+      if (c.p.length === 1 && !this.pinyinIndex.has(c.p[0])) {
+        this.pinyinIndex.set(c.p[0], c.c);
+      }
+    }
+    // Fill in any remaining readings using polyphonic characters as a
+    // fallback (better than nothing, even if not perfectly unambiguous).
+    for (const c of this.allChars) {
+      for (const p of c.p) {
+        if (!this.pinyinIndex.has(p)) this.pinyinIndex.set(p, c.c);
+      }
+    }
+  },
+
   setupTTS() {
     if (!window.speechSynthesis) return;
     const loadVoices = () => {
@@ -2335,33 +2470,90 @@ const HanziApp = {
     });
   },
 
-  speakOne(text, lang) {
+  speakOne(text, lang, isRetry = false) {
     return new Promise(resolve => {
       if (!window.speechSynthesis) { resolve(); return; }
-      try {
-        const utt = new SpeechSynthesisUtterance(text);
-        if (this.state.zhVoice) utt.voice = this.state.zhVoice;
-        utt.lang = 'zh-CN';
-        utt.rate = lang === 'pinyin' ? 0.7 : 0.85;
-        utt.onend = resolve;
-        utt.onerror = resolve;
-        window.speechSynthesis.speak(utt);
-      } catch (e) {
-        resolve();
-      }
+      // Small settle delay right before every speak() call (not just after
+      // cancel()). The speech engine often clips the very start of an
+      // utterance if asked to speak immediately after being idle or right
+      // after a previous utterance ended — this gives it a moment to settle
+      // first so the beginning of the audio doesn't get cut off.
+      setTimeout(() => {
+        try {
+          const utt = new SpeechSynthesisUtterance(text);
+          if (this.state.zhVoice) utt.voice = this.state.zhVoice;
+          utt.lang = 'zh-CN';
+          utt.rate = lang === 'pinyin' ? 0.7 : 0.85;
+          let done = false;
+          let errored = false;
+          const finish = () => { if (!done) { done = true; resolve(); } };
+          utt.onend = finish;
+          utt.onerror = () => {
+            errored = true;
+            // Chrome's speech engine occasionally drops a single utterance in
+            // a chained sequence (this is what makes multi-reading characters
+            // more prone to skipping a syllable than single-reading ones —
+            // more speak() calls means more chances to hit this). Retry once
+            // before giving up on this particular syllable.
+            if (!isRetry) {
+              this.speakOne(text, lang, true).then(finish);
+            } else {
+              finish();
+            }
+          };
+          // Defensive: Chrome can silently leave the engine in a "paused"
+          // state between chained utterances, which would otherwise cause
+          // every subsequent reading after the first to never play.
+          window.speechSynthesis.resume();
+          window.speechSynthesis.speak(utt);
+          // Safety net: some browsers occasionally drop an utterance silently —
+          // no sound, no onend, no onerror at all. Without this, a dropped
+          // utterance would hang the promise chain forever and block every
+          // reading after it (e.g. remaining pronunciations of a polyphonic
+          // character) from ever being spoken.
+          setTimeout(() => { if (!errored) finish(); }, 4000);
+        } catch (e) {
+          resolve();
+        }
+      }, 120);
     });
   },
 
   async speakBrowser(char, pinyins) {
     if (!window.speechSynthesis) return;
     await this.waitForVoices();
-    window.speechSynthesis.cancel();
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      window.speechSynthesis.cancel();
+      // Chrome has a known bug where speak() called immediately after
+      // cancel() can silently no-op (nothing plays, no error fires). Give
+      // the engine a tick to actually reset before queuing new speech —
+      // this is the most likely cause of "sometimes it just doesn't speak."
+      await new Promise(r => setTimeout(r, 80));
+    }
     if (pinyins.length <= 1) {
       await this.speakOne(char, 'zh');
     } else {
       for (let i = 0; i < pinyins.length; i++) {
-        await this.speakOne(pinyins[i], 'pinyin');
-        if (i < pinyins.length - 1) await new Promise(r => setTimeout(r, 400));
+        const reading = pinyins[i];
+        // Speaking bare romanized pinyin (e.g. "bǔ") is unreliable even on a
+        // genuine Chinese voice — voices are trained on real Chinese text,
+        // not isolated romanization, and often spell short syllables out
+        // letter-by-letter ("b", "u") instead of pronouncing them as a word.
+        // Look up a real character that uses this exact reading and speak
+        // that instead — actual hanzi text is something any Chinese voice
+        // reliably knows how to pronounce.
+        const exampleChar = this.pinyinIndex && this.pinyinIndex.get(reading);
+        if (exampleChar) {
+          await this.speakOne(exampleChar, 'zh');
+        } else {
+          // No real character found with this exact reading (rare) — fall
+          // back to the raw pinyin text as a last resort.
+          await this.speakOne(reading, 'pinyin');
+        }
+        // Pause between readings so each utterance fully finishes — including
+        // the engine's own internal cleanup — before the next one is queued,
+        // rather than chaining them back-to-back.
+        if (i < pinyins.length - 1) await new Promise(r => setTimeout(r, 650));
       }
     }
   },
