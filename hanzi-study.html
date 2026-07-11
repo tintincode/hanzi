@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
 <script src="js/speech.js"></script>
 <script src="js/history.js"></script>
+<script src="js/search.js"></script>
 </head>
 <body>
 
@@ -299,6 +300,7 @@ const HanziApp = {
     this.charMap = new Map(this.allChars.map(c => [c.c, c]));
     SpeechManager.init(this.allChars);
     HistoryManager.init(this);
+    SearchManager.init(this.allChars);
     this.cacheDOM();
     this.bindEvents();
     this.setupInfiniteScroll();
@@ -523,32 +525,17 @@ const HanziApp = {
   },
 
   stripTones(str) {
-    return str
-      .toLowerCase()
-      .replace(/[ǖǘǚǜü]/g, 'v')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
+    return SearchManager.stripTones(str);
   },
 
   getFiltered() {
-    let chars = this.allChars;
-    if (this.state.currentFilter !== 'all') {
-      const [lo, hi] = this.constants.LEVEL_RANGES[this.state.currentFilter];
-      chars = chars.filter(c => c.i >= lo && c.i <= hi);
-    }
-    if (this.state.currentSearch) {
-      const q = this.state.currentSearch.toLowerCase();
-      const qStripped = this.stripTones(q);
-      chars = chars.filter(c =>
-        c.c === q ||
-        c.p.some(p => p === q || p.startsWith(q) || this.stripTones(p).startsWith(qStripped)) ||
-        c.p.join('/').includes(q)
-      );
-    }
-    if (this.state.wrongOnly) {
-      chars = chars.filter(c => this.state.studyResults.get(c.i) === 'wrong');
-    }
-    return chars;
+    return SearchManager.filter(
+      this.state.currentSearch,
+      this.state.currentFilter,
+      this.constants.LEVEL_RANGES,
+      this.state.wrongOnly,
+      this.state.studyResults
+    );
   },
 
   renderGrid(resetScroll = false) {
