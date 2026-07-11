@@ -54,3 +54,6 @@ const SearchManager = {
     return chars;
   }
 };
+
+
+export { SearchManager };

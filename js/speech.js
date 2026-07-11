@@ -161,3 +161,6 @@ const SpeechManager = {
     }
   }
 };
+
+
+export { SpeechManager };

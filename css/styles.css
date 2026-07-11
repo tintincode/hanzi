@@ -9,6 +9,9 @@
   --border: rgba(26,23,20,0.1);
   --radius: 12px;
 }
+html {
+  scrollbar-gutter: stable;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -106,9 +109,10 @@ header {
   font-family: inherit;
   transition: all 0.15s;
   white-space: nowrap;
+  font-weight: 500;
 }
 .filter-btn:hover { background: rgba(255,255,255,0.1); color: white; }
-.filter-btn.active { background: #e8d5a3; color: #1a1714; border-color: #e8d5a3; font-weight: 500; }
+.filter-btn.active { background: #e8d5a3; color: #1a1714; border-color: #e8d5a3; }
 
 .header-stats {
   font-size: 0.8rem;

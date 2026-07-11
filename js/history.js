@@ -1,3 +1,6 @@
+import { StorageManager } from './storage.js';
+import { Templates } from './templates.js';
+
 // history.js
 // HistoryManager: owns practice-session persistence (localStorage) and the
 // history panel UI (list, rename, delete, select).
@@ -38,32 +41,11 @@ const HistoryManager = {
   },
 
   loadHistoryState() {
-    try {
-      const raw = localStorage.getItem(this.constants.HISTORY_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.version === 1 && Array.isArray(parsed.sessions)) {
-        // One-time cleanup: drop empty sessions saved by older versions of the
-        // app (e.g. created by opening practice mode without marking anything).
-        const before = parsed.sessions.length;
-        parsed.sessions = parsed.sessions.filter(s => Object.keys(s.results || {}).length > 0);
-        if (parsed.sessions.length !== before && !parsed.sessions.some(s => s.id === parsed.activeSessionId)) {
-          parsed.activeSessionId = null;
-        }
-        this.state.historyState = parsed;
-      }
-    } catch (e) {
-      this.state.historyState = { version: 1, activeSessionId: null, practiceMode: false, sessions: [] };
-    }
+    this.state.historyState = StorageManager.load();
   },
 
   saveHistoryState() {
-    try {
-      this.trimHistorySessions();
-      localStorage.setItem(this.constants.HISTORY_KEY, JSON.stringify(this.state.historyState));
-    } catch (e) {
-      // Safe boundary fallback
-    }
+    StorageManager.save(this.state.historyState);
   },
 
   syncActiveSession() {
@@ -125,16 +107,7 @@ const HistoryManager = {
   },
 
   trimHistorySessions() {
-    const sessions = this.state.historyState.sessions;
-    sessions.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-    if (sessions.length > this.constants.MAX_HISTORY_SESSIONS) {
-      const activeId = this.state.activeSession ? this.state.activeSession.id : null;
-      const kept = [];
-      for (const s of sessions) {
-        if (kept.length < this.constants.MAX_HISTORY_SESSIONS || s.id === activeId) kept.push(s);
-      }
-      this.state.historyState.sessions = kept;
-    }
+    StorageManager.trim(this.state.historyState);
   },
 
   getSession(id) {
@@ -244,7 +217,7 @@ const HistoryManager = {
   renderHistoryPanelList() {
     const sessions = [...this.state.historyState.sessions].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     if (sessions.length === 0) {
-      this.app.dom.historyPanelList.innerHTML = '<div class="history-panel-empty">暂无练习记录<br>开始练习模式后会自动保存进度</div>';
+      this.app.dom.historyPanelList.innerHTML = Templates.emptyHistory();
       return;
     }
     const iconEdit = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
@@ -259,18 +232,7 @@ const HistoryManager = {
       const isComplete = total > 0 && reviewed >= total;
       const title = session.label || this.levelName(session.level);
       const meta = `${reviewed}/${total} 字 · 正确率 ${accuracy} · 对${session.correct || 0} / 错${session.wrong || 0}`;
-      return `
-        <div class="history-card${isActive ? ' active' : ''}" data-session-id="${session.id}" role="button" tabindex="0">
-          <div class="history-card-main">
-            <span class="history-card-title">${this.escapeHtml(title)}</span>
-            <span class="history-card-meta">${meta}</span>
-          </div>
-          <span class="history-card-badge ${isComplete ? 'done' : 'in-progress'}">${isComplete ? '已完成' : '进行中'}</span>
-          <div class="history-card-actions">
-            <button class="history-rename-btn" data-session-id="${session.id}" title="重命名" aria-label="重命名记录">${iconEdit}</button>
-            <button class="history-delete-btn" data-session-id="${session.id}" title="删除" aria-label="删除记录">${iconDelete}</button>
-          </div>
-        </div>`;
+      return Templates.historyCard(session, isActive, isComplete, title, meta, iconEdit, iconDelete, this.escapeHtml);
     }).join('');
 
     this.app.dom.historyPanelList.querySelectorAll('.history-card').forEach(card => {
@@ -402,3 +364,6 @@ const HistoryManager = {
     this.saveActiveSession(true);
   }
 };
+
+
+export { HistoryManager };
