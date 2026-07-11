@@ -21,6 +21,17 @@ body {
   min-height: 100vh;
 }
 
+/* Keyboard-only focus ring. :focus-visible is not applied by browsers on
+   mouse/touch clicks, so this never shows the ring for pointer interaction
+   — no JS blur-on-click hack needed, and Tab-based navigation still works
+   correctly everywhere (including inside modals). */
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #e8a020;
+  outline-offset: 2px;
+}
+
 /* Header */
 header {
   background: var(--ink);

@@ -24,7 +24,10 @@ const HanziApp = {
     hwWriter: null,
     lastMarkAction: null,
     wrongOnly: false,
-    isStudyMode: false
+    isStudyMode: false,
+    focusTrapContainer: null,
+    focusTrapHandler: null,
+    focusTrapReturnEl: null
   },
 
   init() {
@@ -194,13 +197,6 @@ const HanziApp = {
     window.addEventListener('beforeunload', () => HistoryManager.saveActiveSession(true));
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') HistoryManager.saveActiveSession(true);
-    });
-
-    document.addEventListener('click', (e) => {
-      const btn = e.target.closest('button');
-      if (btn && !btn.closest('.flashcard') && !btn.closest('.help-modal')) {
-        btn.blur();
-      }
     });
   },
 
@@ -488,6 +484,59 @@ const HanziApp = {
     });
   },
 
+  // --- Accessibility: focus trap for modals ---
+  // Keeps Tab / Shift+Tab cycling within `container` while a modal is open,
+  // and remembers what was focused beforehand so closeFocusTrap() can put
+  // focus back where the user was. `container` must already be visible
+  // (i.e. its 'open' class already applied) when this is called, since it
+  // needs to query for actually-focusable elements inside it.
+  FOCUSABLE_SELECTOR: 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+
+  getFocusableIn(container) {
+    return Array.from(container.querySelectorAll(this.FOCUSABLE_SELECTOR))
+      .filter(el => el.offsetParent !== null);
+  },
+
+  openFocusTrap(container, preferredFocusEl) {
+    this.state.focusTrapReturnEl = document.activeElement;
+    this.state.focusTrapContainer = container;
+
+    const toFocus = preferredFocusEl || this.getFocusableIn(container)[0];
+    if (toFocus) toFocus.focus();
+
+    this.state.focusTrapHandler = (e) => {
+      if (e.key !== 'Tab') return;
+      const items = this.getFocusableIn(container);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || !container.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !container.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    container.addEventListener('keydown', this.state.focusTrapHandler);
+  },
+
+  closeFocusTrap() {
+    const { focusTrapContainer, focusTrapHandler, focusTrapReturnEl } = this.state;
+    if (focusTrapContainer && focusTrapHandler) {
+      focusTrapContainer.removeEventListener('keydown', focusTrapHandler);
+    }
+    this.state.focusTrapContainer = null;
+    this.state.focusTrapHandler = null;
+    this.state.focusTrapReturnEl = null;
+    if (focusTrapReturnEl && document.body.contains(focusTrapReturnEl)) {
+      focusTrapReturnEl.focus();
+    }
+  },
+
   openMiniModal({ title, text, withInput, inputValue, confirmLabel, danger, onConfirm }) {
     const backdrop = document.getElementById('mini-modal');
     const titleEl = document.getElementById('mini-modal-title');
@@ -516,6 +565,7 @@ const HanziApp = {
       cancelBtn.removeEventListener('click', handleCancel);
       backdrop.removeEventListener('click', handleBackdropClick);
       document.removeEventListener('keydown', handleKeydown);
+      this.closeFocusTrap();
     };
     function handleConfirm() {
       const value = withInput ? inputEl.value.trim() : true;
@@ -536,11 +586,13 @@ const HanziApp = {
     document.addEventListener('keydown', handleKeydown);
 
     backdrop.classList.add('open');
-    if (withInput) { inputEl.focus(); inputEl.select(); }
+    this.openFocusTrap(backdrop, withInput ? inputEl : confirmBtn);
+    if (withInput) inputEl.select();
   },
 
   showModal(idx) {
     if (idx < 0 || idx >= this.state.visibleChars.length) return;
+    const wasOpen = this.dom.modal.classList.contains('open');
     this.state.activeModalIdx = idx;
     const c = this.state.visibleChars[idx];
     this.dom.fcNum.textContent = `#${c.i} / 8105`;
@@ -553,6 +605,8 @@ const HanziApp = {
     document.querySelectorAll('.char-card.active').forEach(el => el.classList.remove('active'));
     const activeEl = this.ensureCardRendered(c.i);
     if (activeEl) { activeEl.classList.add('active'); activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+
+    if (!wasOpen) this.openFocusTrap(this.dom.modal, this.dom.fcCloseBtn);
   },
 
   initStrokes(char) {
@@ -590,10 +644,12 @@ const HanziApp = {
   },
 
   closeModal() {
+    if (!this.dom.modal.classList.contains('open')) return;
     this.dom.modal.classList.remove('open');
     document.querySelectorAll('.char-card.active').forEach(el => el.classList.remove('active'));
     this.state.hwWriter = null;
     document.getElementById('stroke-container').innerHTML = '<div class="stroke-loading">加载中…</div>';
+    this.closeFocusTrap();
   },
 
   navCard(dir) {
@@ -762,8 +818,15 @@ const HanziApp = {
     setTimeout(() => this.dom.fcSpeakBtn.classList.remove('speaking'), 5000);
   },
 
-  openHelp() { this.dom.helpModal.classList.add('open'); },
-  closeHelp() { this.dom.helpModal.classList.remove('open'); }
+  openHelp() {
+    this.dom.helpModal.classList.add('open');
+    this.openFocusTrap(this.dom.helpModal, this.dom.helpCloseBtn);
+  },
+  closeHelp() {
+    if (!this.dom.helpModal.classList.contains('open')) return;
+    this.dom.helpModal.classList.remove('open');
+    this.closeFocusTrap();
+  }
 };
 
 

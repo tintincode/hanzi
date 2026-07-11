@@ -195,11 +195,15 @@ const HistoryManager = {
     this.renderHistoryPanelList();
     this.app.dom.historyPanel.classList.add('open');
     document.addEventListener('keydown', this.handleHistoryPanelKeydown);
+    const firstCard = this.app.dom.historyPanelList.querySelector('.history-card');
+    this.app.openFocusTrap(this.app.dom.historyPanel, firstCard || this.app.dom.historyPanelClose);
   },
 
   closeHistoryPanel() {
+    if (!this.app.dom.historyPanel.classList.contains('open')) return;
     this.app.dom.historyPanel.classList.remove('open');
     document.removeEventListener('keydown', this.handleHistoryPanelKeydown);
+    this.app.closeFocusTrap();
   },
 
   handleHistoryPanelKeydown(e) {
