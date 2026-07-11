@@ -46,7 +46,6 @@ const HistoryManager = {
   },
 
   syncActiveSession() {
-    this.trimHistorySessions();
     const initialSession = this.getSession(this.state.historyState.activeSessionId) || this.state.historyState.sessions[0] || null;
     if (initialSession) {
       this.activateSession(initialSession);
@@ -101,10 +100,6 @@ const HistoryManager = {
     this.state.historyState.activeSessionId = session.id;
     this.updateHistorySelect();
     return session;
-  },
-
-  trimHistorySessions() {
-    StorageManager.trim(this.state.historyState);
   },
 
   getSession(id) {

@@ -17,6 +17,7 @@ export const StorageManager = {
         if (!parsed.sessions.some(s => s.id === parsed.activeSessionId)) {
           parsed.activeSessionId = null;
         }
+        this.trim(parsed);
         return parsed;
       }
     } catch (e) {

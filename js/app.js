@@ -37,9 +37,8 @@ const HanziApp = {
     this.bindEvents();
     this.setupInfiniteScroll();
     
-    // Asynchronously fetch complete 8,105 dataset in background to upgrade UI cleanly
-    //this.loadFullDatabaseOnline();
-    
+    // The full 8,105-character dataset ships offline in data.js, so no
+    // network fetch is needed here.
     HistoryManager.syncActiveSession();
     this.renderGrid(true);
     this.updateHeaderOffset();
@@ -87,42 +86,6 @@ const HanziApp = {
       fcPrimaryCloseBtn: document.getElementById('fc-primary-close-btn')
     };
   },
-
-  // async loadFullDatabaseOnline() {
-  //   try {
-  //     // Fetch characters array and pinyins array in parallel
-  //     const [charRes, pinyinRes] = await Promise.all([
-  //       fetch('https://cdn.jsdelivr.net/gh/jaywcjlove/table-of-general-standard-chinese-characters@main/data/characters.min.json'),
-  //       fetch('https://cdn.jsdelivr.net/gh/jaywcjlove/table-of-general-standard-chinese-characters@main/data/pinyin.min.json')
-  //     ]);
-      
-  //     if (!charRes.ok || !pinyinRes.ok) return;
-  //     const chars = await charRes.json();
-  //     const pinyins = await pinyinRes.json();
-      
-  //     if (Array.isArray(chars) && Array.isArray(pinyins) && chars.length === pinyins.length) {
-  //       // Map elements directly to standard architecture structures
-  //       const fullDatabase = chars.map((char, index) => {
-  //         const py = pinyins[index];
-  //         return {
-  //           i: index + 1,
-  //           c: char,
-  //           p: Array.isArray(py) ? py : [py]
-  //         };
-  //       });
-        
-  //       // Quietly hot-reload application state
-  //       this.allChars = fullDatabase;
-  //       this.charMap = new Map(fullDatabase.map(c => [c.c, c]));
-  //       SpeechManager.init(this.allChars);
-        
-  //       // Trigger non-blocking view render
-  //       this.renderGrid(false);
-  //     }
-  //   } catch (e) {
-  //     console.warn("Unable to sync complete 8105 dictionary online. Operating in standalone offline mode.", e);
-  //   }
-  // },
 
   bindEvents() {
     this.dom.search.addEventListener('input', (e) => {
