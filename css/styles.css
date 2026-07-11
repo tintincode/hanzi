@@ -110,6 +110,7 @@ header {
   transition: all 0.15s;
   white-space: nowrap;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 .filter-btn:hover { background: rgba(255,255,255,0.1); color: white; }
 .filter-btn.active { background: #e8d5a3; color: #1a1714; border-color: #e8d5a3; }
@@ -118,6 +119,7 @@ header {
   font-size: 0.8rem;
   color: rgba(255,255,255,0.45);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .header-tools {
   display: flex;
@@ -508,6 +510,7 @@ body.study-mode .practice-bar { display: block; }
   font-size: 0.74rem;
   color: var(--ink3);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .practice-complete-toast {
   position: fixed;

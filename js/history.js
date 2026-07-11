@@ -21,11 +21,8 @@ import { Templates } from './templates.js';
 //   HistoryManager.syncActiveSession(); // once, after bindEvents/setup
 
 const HistoryManager = {
-  constants: {
-    HISTORY_KEY: 'hanziStudyHistory.v1',
-    MAX_HISTORY_SESSIONS: 30
-  },
-
+  // Note: HISTORY_KEY / MAX_HISTORY_SESSIONS live in storage.js only —
+  // StorageManager owns persistence details, HistoryManager just calls it.
   state: {
     historyState: { version: 1, activeSessionId: null, practiceMode: false, sessions: [] },
     activeSession: null,
@@ -256,6 +253,26 @@ const HistoryManager = {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  },
+
+  // Discards the active session if it's still empty (no cards marked yet) —
+  // used when the user switches the level filter before reviewing anything,
+  // so we don't leave an empty session hanging around. If the session
+  // already has progress, this just flushes it to storage instead.
+  // Returns true if a session was discarded (caller may want to react).
+  discardEmptyActiveSession() {
+    if (!this.state.activeSession) return false;
+    if (this.app.state.studyResults.size === 0) {
+      const id = this.state.activeSession.id;
+      this.state.historyState.sessions = this.state.historyState.sessions.filter(s => s.id !== id);
+      this.state.activeSession = null;
+      this.state.historyState.activeSessionId = null;
+      this.saveHistoryState();
+      this.updateHistorySelect();
+      return true;
+    }
+    this.saveActiveSession(true);
+    return false;
   },
 
   ensurePracticeSession() {

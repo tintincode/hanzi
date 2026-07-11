@@ -143,13 +143,7 @@ const HanziApp = {
       btn.classList.add('active');
 
       if (this.state.isStudyMode) {
-        if (HistoryManager.state.activeSession && this.state.studyResults.size === 0) {
-          HistoryManager.state.historyState.sessions = HistoryManager.state.historyState.sessions.filter(s => s.id !== HistoryManager.state.activeSession.id);
-          HistoryManager.state.activeSession = null;
-          HistoryManager.state.historyState.activeSessionId = null;
-        } else {
-          HistoryManager.saveActiveSession(true);
-        }
+        HistoryManager.discardEmptyActiveSession();
       }
 
       this.state.currentFilter = btn.dataset.level;
@@ -256,10 +250,6 @@ const HanziApp = {
     this.observer.observe(this.dom.scrollSentinel);
   },
 
-  stripTones(str) {
-    return SearchManager.stripTones(str);
-  },
-
   getFiltered() {
     return SearchManager.filter(
       this.state.currentSearch,
@@ -302,40 +292,47 @@ const HanziApp = {
     const isGroupedLayout = !this.state.currentSearch;
 
     if (isGroupedLayout) {
-      let currentSection = null;
-      const docFragment = document.createDocumentFragment();
-
+      // Split the chunk into consecutive same-level runs first (usually just
+      // one run, occasionally two when a chunk straddles a level boundary),
+      // then do exactly one HTML-string build + one DOM insert per run —
+      // instead of one insertAdjacentHTML call per character.
+      const runs = [];
       chunk.forEach(c => {
         let levelKey = '1';
         if (c.i > 3500 && c.i <= 6500) levelKey = '2';
         else if (c.i > 6500) levelKey = '3';
 
-        if (currentSection !== levelKey) {
-          currentSection = levelKey;
-          
-          // Check DOM directly to avoid duplicating group heading zones
-          let existingGrid = this.dom.gridContainer.querySelector(`#grid-sec-${levelKey}`);
-          if (!existingGrid) {
-            const sectionDiv = document.createElement('div');
-            sectionDiv.className = 'section-label';
-            sectionDiv.innerHTML = Templates.sectionLabel(levelKey);
-            docFragment.appendChild(sectionDiv);
-
-            const gridDiv = document.createElement('div');
-            gridDiv.className = 'char-grid';
-            gridDiv.id = `grid-sec-${levelKey}`;
-            docFragment.appendChild(gridDiv);
-          }
-        }
-
-        // Query active fragment or global document to insert cards securely
-        const targetGrid = docFragment.getElementById(`grid-sec-${currentSection}`) 
-          || this.dom.gridContainer.querySelector(`#grid-sec-${currentSection}`);
-          
-        if (targetGrid) {
-          targetGrid.insertAdjacentHTML('beforeend', this.cardHTML(c));
+        const lastRun = runs[runs.length - 1];
+        if (lastRun && lastRun.levelKey === levelKey) {
+          lastRun.chars.push(c);
+        } else {
+          runs.push({ levelKey, chars: [c] });
         }
       });
+
+      const docFragment = document.createDocumentFragment();
+
+      runs.forEach(run => {
+          // Check DOM directly to avoid duplicating group heading zones
+        let targetGrid = docFragment.getElementById(`grid-sec-${run.levelKey}`)
+          || this.dom.gridContainer.querySelector(`#grid-sec-${run.levelKey}`);
+
+        if (!targetGrid) {
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'section-label';
+          sectionDiv.innerHTML = Templates.sectionLabel(run.levelKey);
+            docFragment.appendChild(sectionDiv);
+
+          targetGrid = document.createElement('div');
+          targetGrid.className = 'char-grid';
+          targetGrid.id = `grid-sec-${run.levelKey}`;
+          docFragment.appendChild(targetGrid);
+          }
+          
+        const html = run.chars.map(c => this.cardHTML(c)).join('');
+        targetGrid.insertAdjacentHTML('beforeend', html);
+      });
+
       this.dom.gridContainer.appendChild(docFragment);
     } else {
       let mainGrid = this.dom.gridContainer.querySelector('.char-grid');
