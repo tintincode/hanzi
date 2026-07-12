@@ -42,9 +42,10 @@ const HanziApp = {
     
     // The full 8,105-character dataset ships offline in data.js, so no
     // network fetch is needed here.
-    HistoryManager.syncActiveSession();
-    this.renderGrid(true);
+    const resumedStudyMode = HistoryManager.syncActiveSession();
+    if (!resumedStudyMode) this.renderGrid(true);
     this.updateHeaderOffset();
+    this.updateReadingProgress();
   },
 
 
@@ -63,6 +64,8 @@ const HanziApp = {
       helpCloseBtn: document.getElementById('help-close-btn'),
       practiceProgressFill: document.getElementById('practice-progress-fill'),
       practiceProgressCount: document.getElementById('practice-progress-count'),
+      readingProgressCount: document.getElementById('reading-progress-count'),
+      backToTopBtn: document.getElementById('back-to-top-btn'),
       scoreCorrect: document.getElementById('score-correct'),
       scoreWrong: document.getElementById('score-wrong'),
       scoreAccuracy: document.getElementById('score-accuracy'),
@@ -73,6 +76,9 @@ const HanziApp = {
       historyPanel: document.getElementById('history-panel'),
       historyPanelList: document.getElementById('history-panel-list'),
       historyPanelClose: document.getElementById('history-panel-close'),
+      historyExportBtn: document.getElementById('history-export-btn'),
+      historyImportBtn: document.getElementById('history-import-btn'),
+      historyImportInput: document.getElementById('history-import-input'),
       scoreResetBtn: document.getElementById('score-reset-btn'),
       practiceCompleteToast: document.getElementById('practice-complete-toast'),
       siteTitleBtn: document.getElementById('site-title-btn'),
@@ -179,6 +185,13 @@ const HanziApp = {
     this.dom.historyToggleBtn.addEventListener('click', () => HistoryManager.openHistoryPanel());
     this.dom.historyPanelClose.addEventListener('click', () => HistoryManager.closeHistoryPanel());
     this.dom.historyPanel.addEventListener('click', (e) => { if (e.target === this.dom.historyPanel) HistoryManager.closeHistoryPanel(); });
+    this.dom.historyExportBtn.addEventListener('click', () => HistoryManager.exportHistory());
+    this.dom.historyImportBtn.addEventListener('click', () => this.dom.historyImportInput.click());
+    this.dom.historyImportInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) HistoryManager.importHistoryFromFile(file);
+      e.target.value = ''; // allow re-selecting the same file next time
+    });
     this.dom.scoreResetBtn.addEventListener('click', () => HistoryManager.startNewPracticeSession());
     this.dom.siteTitleBtn.addEventListener('click', () => this.goHome());
 
@@ -198,6 +211,29 @@ const HanziApp = {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') HistoryManager.saveActiveSession(true);
     });
+
+    // Live 阅读进度 counter + back-to-top visibility — one shared rAF-
+    // throttled scroll handler so it stays cheap even while flick-scrolling
+    // through a long list. Reading progress is mode-gated (阅读模式 only);
+    // back-to-top works the same in both modes.
+    let scrollTicking = false;
+    window.addEventListener('scroll', () => {
+      if (scrollTicking) return;
+      scrollTicking = true;
+      requestAnimationFrame(() => {
+        this.updateReadingProgress();
+        if (this.dom.backToTopBtn) {
+          this.dom.backToTopBtn.classList.toggle('show', window.scrollY > 600);
+        }
+        scrollTicking = false;
+      });
+    }, { passive: true });
+
+    if (this.dom.backToTopBtn) {
+      this.dom.backToTopBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
   },
 
   setupInfiniteScroll() {
@@ -232,6 +268,7 @@ const HanziApp = {
       this.dom.gridContainer.innerHTML = Templates.emptyGrid();
       this.state.practiceActiveId = null;
       this.updateScore();
+      this.updateReadingProgress();
       return;
     }
 
@@ -239,6 +276,7 @@ const HanziApp = {
     this.renderNextChunk();
     this.syncPracticeSelection();
     this.updateScore();
+    this.updateReadingProgress();
   },
 
   renderNextChunk() {
@@ -656,6 +694,37 @@ const HanziApp = {
     this.showModal(this.state.activeModalIdx + dir);
   },
 
+  // Ephemeral "阅读进度" counter for 阅读模式 — no persistence, just reflects
+  // whichever character card is currently topmost in the viewport, so the
+  // user always has a live sense of position while scrolling. Resets on
+  // reload by design; nothing here is saved.
+  updateReadingProgress() {
+    if (this.state.isStudyMode || !this.dom.readingProgressCount) return;
+    const total = this.state.visibleChars.length;
+    if (total === 0) {
+      this.dom.readingProgressCount.textContent = '– / –';
+      return;
+    }
+
+    const headerOffset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-offset')) || 0;
+    const readingBar = document.querySelector('.reading-bar');
+    const threshold = headerOffset + (readingBar ? readingBar.offsetHeight : 0);
+
+    const cards = document.querySelectorAll('.char-card');
+    let topCard = null;
+    for (const card of cards) {
+      if (card.getBoundingClientRect().bottom > threshold) { topCard = card; break; }
+    }
+    if (!topCard) topCard = cards[cards.length - 1] || null;
+    if (!topCard) { this.dom.readingProgressCount.textContent = '– / –'; return; }
+
+    const id = parseInt(topCard.dataset.id, 10);
+    const idx = this.state.visibleChars.findIndex(c => c.i === id);
+    this.dom.readingProgressCount.textContent = idx === -1
+      ? '– / –'
+      : `${(idx + 1).toLocaleString()} / ${total.toLocaleString()}`;
+  },
+
   setStudy(on) {
     document.body.classList.toggle('study-mode', on);
     this.state.isStudyMode = on;
@@ -667,6 +736,7 @@ const HanziApp = {
       this.state.practiceActiveId = null;
       this.state.studyResults.clear();
       this.clearCardStates();
+      this.updateReadingProgress();
     } else {
       HistoryManager.ensurePracticeSession();
       this.renderGrid(false);

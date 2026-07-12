@@ -8,6 +8,13 @@
   --teal-light: #e1f5ee;
   --border: rgba(26,23,20,0.1);
   --radius: 12px;
+  /* Standard height for the sticky sub-header bars (练习进度 / 阅读进度).
+     Computed from practice-bar-inner's actual tallest content: 0.55rem
+     top+bottom padding (~17.6px) + the 30px buttons inside it (~47.6px),
+     rounded up. Both bars reference this one value so they can't silently
+     drift apart again — previously each bar's height was just whatever
+     its own content happened to need. */
+  --bar-min-height: 48px;
 }
 html {
   scrollbar-gutter: stable;
@@ -482,6 +489,7 @@ body.study-mode .practice-bar { display: block; }
   max-width: 1400px;
   margin: 0 auto;
   padding: 0.55rem 1.5rem;
+  min-height: var(--bar-min-height);
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -542,6 +550,77 @@ body.study-mode .practice-bar { display: block; }
 .practice-complete-toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* Reading-progress bar (阅读模式) — mirrors .practice-bar's sticky
+   placement below the header, but shown only outside study-mode, since
+   the two bars are mutually exclusive (never both visible at once). */
+.reading-bar {
+  display: block;
+  position: sticky;
+  top: var(--header-offset, 0px);
+  z-index: 90;
+  background: rgba(255,255,255,0.94);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+body.study-mode .reading-bar { display: none; }
+.reading-bar-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0.55rem 1.5rem;
+  min-height: var(--bar-min-height);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.reading-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink2);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.reading-progress-count {
+  font-size: 0.74rem;
+  color: var(--ink3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Back-to-top — lightweight scroll shortcut, distinct from the site-title
+   "go home" action: this never touches filters/search/mode, it only
+   scrolls. visibility (not just opacity) is used so the button also drops
+   out of the Tab order while hidden, matching :focus-visible elsewhere. */
+.back-to-top {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ink);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  z-index: 80;
+}
+.back-to-top.show {
+  opacity: 0.9;
+  visibility: visible;
+  transform: translateY(0);
+}
+.back-to-top:hover { opacity: 1; }
+@media (max-width: 600px) {
+  .back-to-top { right: 1rem; bottom: 1rem; width: 38px; height: 38px; }
 }
 .wrong-filter-btn {
   display: inline-flex;
@@ -649,7 +728,29 @@ body.study-mode .practice-bar { display: block; }
   padding: 1rem 1.1rem 0.8rem;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  gap: 0.5rem;
 }
+.history-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  margin-right: 0.4rem;
+}
+.history-io-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--ink2);
+  font-size: 0.74rem;
+  padding: 0.32rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.history-io-btn:hover { background: var(--bg); color: var(--ink); }
 .history-panel-head h3 {
   font-family: "Noto Serif SC", serif;
   font-size: 1.02rem;
@@ -998,6 +1099,7 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
     min-width: 0;
   }
   .practice-bar-inner { padding: 0.5rem 0.75rem; }
+  .reading-bar-inner { padding: 0.5rem 0.75rem; }
   .history-toggle-btn span.history-label { display: none; }
   .history-toggle-btn { padding: 0 0.45rem; }
   .wrong-filter-btn span.wrong-filter-label { display: none; }

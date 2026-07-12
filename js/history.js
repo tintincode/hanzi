@@ -45,16 +45,105 @@ const HistoryManager = {
     StorageManager.save(this.state.historyState);
   },
 
+  // --- Backup / restore (练习模式 history only — exports exactly what
+  // StorageManager persists, so nothing needs to know about this format
+  // beyond StorageManager itself) ---
+
+  exportHistory() {
+    this.saveActiveSession(true); // flush any pending progress first
+    const data = JSON.stringify(this.state.historyState, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `hanzi-study-history-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+
+  // Merge by session id, keeping whichever copy (local or imported) has the
+  // later updatedAt — so restoring a backup on a device that already has
+  // some progress never silently discards it.
+  mergeSessionsById(localSessions, importedSessions) {
+    const map = new Map();
+    localSessions.forEach(s => map.set(s.id, s));
+    importedSessions.forEach(s => {
+      const existing = map.get(s.id);
+      if (!existing || (s.updatedAt || 0) > (existing.updatedAt || 0)) {
+        map.set(s.id, s);
+      }
+    });
+    return Array.from(map.values());
+  },
+
+  importHistoryFromFile(file) {
+    const alert = (title, text) => this.app.openMiniModal({ title, text, confirmLabel: '确定', onConfirm: () => {} });
+
+    const reader = new FileReader();
+    reader.onerror = () => alert('导入失败', '读取文件时发生错误，请重试。');
+    reader.onload = () => {
+      let parsed;
+      try {
+        parsed = JSON.parse(reader.result);
+      } catch (e) {
+        alert('导入失败', '所选文件不是有效的 JSON 格式。');
+        return;
+      }
+      if (!parsed || !Array.isArray(parsed.sessions)) {
+        alert('导入失败', '文件内容与历史记录格式不符。');
+        return;
+      }
+      // Basic sanity filter — keep only entries that actually look like sessions.
+      const validSessions = parsed.sessions.filter(s =>
+        s && typeof s.id === 'string' && typeof s.level !== 'undefined' && s.results && typeof s.results === 'object'
+      );
+      if (!validSessions.length) {
+        alert('导入失败', '文件中没有可识别的练习记录。');
+        return;
+      }
+
+      const before = this.state.historyState.sessions.length;
+      this.state.historyState.sessions = this.mergeSessionsById(this.state.historyState.sessions, validSessions);
+      this.saveHistoryState(); // StorageManager.save() trims as part of writing
+
+      // If the currently active session was among the imported ones, reload
+      // its (possibly newer) data into the live view so what's on screen
+      // matches what's now in storage.
+      if (this.state.activeSession) {
+        const refreshed = this.getSession(this.state.activeSession.id);
+        if (refreshed) {
+          this.state.activeSession = refreshed;
+          this.loadSessionResults(refreshed);
+          if (this.app.state.isStudyMode) this.app.renderGrid(false);
+        }
+      }
+
+      this.updateHistorySelect();
+      const added = Math.max(0, this.state.historyState.sessions.length - before);
+      alert('导入完成', `已处理 ${validSessions.length} 条记录（新增 ${added} 条，其余为更新或重复，已自动合并）。`);
+    };
+    reader.readAsText(file);
+  },
+
   syncActiveSession() {
     const initialSession = this.getSession(this.state.historyState.activeSessionId) || this.state.historyState.sessions[0] || null;
-    if (initialSession) {
-      this.activateSession(initialSession);
-    } else {
-      this.updateHistorySelect();
-    }
+
     if (this.state.historyState.practiceMode && initialSession) {
+      // Only restore the saved level filter / search / view state when
+      // we're actually resuming into 练习模式. Otherwise a past exercise
+      // session would silently force the level filter (e.g. always
+      // landing on 一级 3500) even for a plain 阅读模式 page load, which
+      // breaks the independence between the two modes.
+      this.activateSession(initialSession);
       this.app.setStudy(true);
+      return true; // setStudy(true) already rendered + scrolled to the resume position
     }
+
+    this.updateHistorySelect();
+    return false;
   },
 
   scheduleHistorySave() {
