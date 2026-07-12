@@ -66,6 +66,7 @@ const HanziApp = {
       practiceProgressCount: document.getElementById('practice-progress-count'),
       readingProgressCount: document.getElementById('reading-progress-count'),
       backToTopBtn: document.getElementById('back-to-top-btn'),
+      themeToggleBtn: document.getElementById('theme-toggle-btn'),
       scoreCorrect: document.getElementById('score-correct'),
       scoreWrong: document.getElementById('score-wrong'),
       scoreAccuracy: document.getElementById('score-accuracy'),
@@ -232,6 +233,20 @@ const HanziApp = {
     if (this.dom.backToTopBtn) {
       this.dom.backToTopBtn.addEventListener('click', () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    if (this.dom.themeToggleBtn) {
+      this.dom.themeToggleBtn.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try {
+          localStorage.setItem('hanziStudyTheme', next);
+        } catch (e) {
+          // localStorage unavailable — theme still applies for this session,
+          // just won't persist across reloads.
+        }
       });
     }
   },

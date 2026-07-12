@@ -15,7 +15,69 @@
      drift apart again — previously each bar's height was just whatever
      its own content happened to need. */
   --bar-min-height: 48px;
+
+  /* Semantic state & accent colors. Previously these were hardcoded at each
+     usage site (found in the Phase 1 audit: ~40 raw hex values scattered
+     through the file) — consolidated here so re-theming (e.g. dark mode)
+     only requires changing values in one place. --teal/--teal-light above
+     are reused directly for "success" — no separate variable needed since
+     the value is identical. */
+  --danger: #c0392b;              /* wrong/delete state */
+  --danger-bg: #fdf2f2;           /* wrong card background */
+  --danger-bg-alt: #fdf0ee;       /* wrong-count pill / btn-wrong background (distinct shade) */
+  --danger-text: #e8897a;         /* lighter danger accent for small inline text (score-wrong) */
+  --success-bg: #f0faf5;          /* correct card background */
+  --success-text: #6fcfa8;        /* lighter success accent for small inline text (score-correct) */
+  --accent: #e8a020;              /* saturated gold — focus ring, "speaking" state */
+  --accent-rgb: 232,160,32;       /* same as --accent, as r,g,b for use inside rgba() */
+  --header-accent: #e8d5a3;       /* pale gold — header-only accents (site-title span, active level pill) */
+  --on-dark: #fff;                /* text/icon color on any dark or saturated-color surface */
+  --ink-hover: #333;              /* hover-lighten shade for dark ("primary") buttons */
+  --overlay: rgba(26,23,20,0.55); /* modal/panel backdrop scrim */
+  --shadow-color: rgba(0,0,0,0.25); /* consistent drop-shadow tint for floating elements */
+
+  /* Theme-invariant values. The header/toast/primary-button chrome is
+     always dark regardless of overall theme (a deliberate choice — see
+     conversation), so it must NOT use --ink, since --ink itself flips to
+     near-white text in dark mode. --fixed-dark decouples "always-dark
+     chrome background" from "primary text color that flips with theme". */
+  --fixed-dark: #1a1714;
+  --bar-bg: rgba(255,255,255,0.94); /* 阅读进度/练习进度 bar background — flips in dark mode */
 }
+
+/* Dark theme. Applied via [data-theme="dark"] on <html>, set by JS at
+   startup (resolved from a stored preference, falling back to the OS
+   prefers-color-scheme). Colors here are re-tuned for dark-background
+   contrast, not a literal inversion of the light values — e.g. the
+   correct/wrong/gold accents are brightened, since the light-mode shades
+   would read as muddy/low-contrast on a dark surface.
+   Deliberately NOT overridden here: --fixed-dark, --on-dark, --ink-hover —
+   the header/toast/primary-button chrome stays the same dark surface in
+   both themes (see conversation), so those three intentionally fall
+   through to their :root values unchanged. */
+:root[data-theme="dark"] {
+  --bg: #14120d;
+  --surface: #201d17;
+  --ink: #f3ede2;
+  --ink2: #c7bdae;
+  --ink3: #8c8175;
+  --teal: #4cb896;
+  --teal-light: #17332a;
+  --border: rgba(255,255,255,0.12);
+  --danger: #e2705d;
+  --danger-bg: #2c1a17;
+  --danger-bg-alt: #33201c;
+  --danger-text: #f0a394;
+  --success-bg: #16281f;
+  --success-text: #86e0bb;
+  --accent: #f0b23e;
+  --accent-rgb: 240,178,62;
+  --header-accent: #f0dca8;
+  --overlay: rgba(0,0,0,0.65);
+  --shadow-color: rgba(0,0,0,0.5);
+  --bar-bg: rgba(20,18,13,0.94);
+}
+
 html {
   scrollbar-gutter: stable;
 }
@@ -35,14 +97,14 @@ body {
 button:focus-visible,
 input:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid #e8a020;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 /* Header */
 header {
-  background: var(--ink);
-  color: white;
+  background: var(--fixed-dark);
+  color: var(--on-dark);
   padding: 2rem 2rem 1.5rem;
   position: sticky;
   top: 0;
@@ -71,7 +133,7 @@ header {
   opacity: 0.9;
 }
 .site-title span {
-  color: #e8d5a3;
+  color: var(--header-accent);
 }
 
 /* Controls */
@@ -102,7 +164,7 @@ header {
   border: 1px solid rgba(255,255,255,0.2);
   border-radius: 8px;
   background: rgba(255,255,255,0.1);
-  color: white;
+  color: var(--on-dark);
   font-size: 0.9rem;
   font-family: inherit;
   outline: none;
@@ -130,8 +192,8 @@ header {
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
-.filter-btn:hover { background: rgba(255,255,255,0.1); color: white; }
-.filter-btn.active { background: #e8d5a3; color: #1a1714; border-color: #e8d5a3; }
+.filter-btn:hover { background: rgba(255,255,255,0.1); color: var(--on-dark); }
+.filter-btn.active { background: var(--header-accent); color: var(--fixed-dark); border-color: var(--header-accent); }
 
 .header-stats {
   font-size: 0.8rem;
@@ -214,10 +276,10 @@ main {
   border-color: rgba(26,23,20,0.2);
 }
 .char-card.speaking {
-  border-color: #e8a020;
-  box-shadow: 0 0 0 3px rgba(232,160,32,0.2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb),0.2);
 }
-.char-card.speaking .char-glyph { color: #e8a020; }
+.char-card.speaking .char-glyph { color: var(--accent); }
 .char-card.active {
   border-color: var(--teal);
   box-shadow: 0 0 0 2px var(--teal-light), 0 6px 20px rgba(0,0,0,0.08);
@@ -273,7 +335,7 @@ main {
   padding: 2.5rem 2rem 2rem;
   position: relative;
   text-align: center;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  box-shadow: 0 20px 60px var(--shadow-color);
 }
 .close-btn {
   position: absolute;
@@ -375,11 +437,11 @@ main {
 .fc-nav button:hover { background: var(--border); }
 .fc-nav button:active { transform: scale(0.97); }
 .fc-nav button.primary {
-  background: var(--ink);
-  color: white;
-  border-color: var(--ink);
+  background: var(--fixed-dark);
+  color: var(--on-dark);
+  border-color: var(--fixed-dark);
 }
-.fc-nav button.primary:hover { background: #333; }
+.fc-nav button.primary:hover { background: var(--ink-hover); }
 
 /* Empty state */
 .empty {
@@ -401,7 +463,7 @@ main {
   font-family: inherit;
   transition: all 0.15s;
 }
-.view-btn.active { background: rgba(255,255,255,0.15); color: white; }
+.view-btn.active { background: rgba(255,255,255,0.15); color: var(--on-dark); }
 
 /* Study mode (hide pinyin) */
 body.study-mode .char-pinyin { visibility: hidden; }
@@ -412,15 +474,15 @@ body.study-mode .char-card.wrong .char-pinyin { visibility: visible; }
 
 /* Study mode result states */
 body.study-mode .char-card.correct {
-  background: #f0faf5;
-  border-color: #0f6e56;
+  background: var(--success-bg);
+  border-color: var(--teal);
 }
-body.study-mode .char-card.correct .char-glyph { color: #0f6e56; }
+body.study-mode .char-card.correct .char-glyph { color: var(--teal); }
 body.study-mode .char-card.wrong {
-  background: #fdf2f2;
-  border-color: #c0392b;
+  background: var(--danger-bg);
+  border-color: var(--danger);
 }
-body.study-mode .char-card.wrong .char-glyph { color: #c0392b; }
+body.study-mode .char-card.wrong .char-glyph { color: var(--danger); }
 
 /* Result buttons shown after reveal */
 .card-result-btns {
@@ -458,8 +520,8 @@ body.study-mode .char-card.active.wrong .card-result-btns {
 }
 .card-result-btns button:hover { opacity: 0.8; }
 .card-result-btns button:active { transform: scale(0.96); }
-.btn-correct { background: #e1f5ee; color: #0f6e56; }
-.btn-wrong   { background: #fdf0ee; color: #c0392b; }
+.btn-correct { background: var(--teal-light); color: var(--teal); }
+.btn-wrong   { background: var(--danger-bg-alt); color: var(--danger); }
 .key-hint {
   margin-left: 3px;
   font-size: 0.6rem;
@@ -480,7 +542,7 @@ body.study-mode .char-card.active.wrong .card-result-btns {
   position: sticky;
   top: var(--header-offset, 0px);
   z-index: 90;
-  background: rgba(255,255,255,0.94);
+  background: var(--bar-bg);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(10px);
 }
@@ -520,7 +582,7 @@ body.study-mode .practice-bar { display: block; }
 }
 .practice-progress-fill {
   height: 100%;
-  background: #0f6e56;
+  background: var(--teal);
   border-radius: 4px;
   width: 0%;
   transition: width 0.25s ease;
@@ -536,12 +598,12 @@ body.study-mode .practice-bar { display: block; }
   left: 50%;
   bottom: 1.5rem;
   transform: translateX(-50%) translateY(12px);
-  background: #1a1714;
-  color: #fff;
+  background: var(--fixed-dark);
+  color: var(--on-dark);
   padding: 0.65rem 1.1rem;
   border-radius: 10px;
   font-size: 0.85rem;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  box-shadow: 0 8px 24px var(--shadow-color);
   z-index: 250;
   opacity: 0;
   pointer-events: none;
@@ -560,7 +622,7 @@ body.study-mode .practice-bar { display: block; }
   position: sticky;
   top: var(--header-offset, 0px);
   z-index: 90;
-  background: rgba(255,255,255,0.94);
+  background: var(--bar-bg);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(10px);
 }
@@ -600,13 +662,13 @@ body.study-mode .reading-bar { display: none; }
   height: 42px;
   border-radius: 50%;
   border: none;
-  background: var(--ink);
-  color: white;
+  background: var(--fixed-dark);
+  color: var(--on-dark);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 16px var(--shadow-color);
   opacity: 0;
   visibility: hidden;
   transform: translateY(8px);
@@ -651,20 +713,20 @@ body.study-mode .reading-bar { display: none; }
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  background: #fdf0ee;
-  color: #c0392b;
+  background: var(--danger-bg-alt);
+  color: var(--danger);
   font-size: 0.68rem;
   font-weight: 700;
 }
 .wrong-filter-btn[aria-pressed="true"] {
-  background: #c0392b;
-  border-color: #c0392b;
-  color: white;
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--on-dark);
 }
-.wrong-filter-btn[aria-pressed="true"] svg { color: white; }
+.wrong-filter-btn[aria-pressed="true"] svg { color: var(--on-dark); }
 .wrong-filter-btn[aria-pressed="true"] .wrong-filter-count {
   background: rgba(255,255,255,0.25);
-  color: white;
+  color: var(--on-dark);
 }
 .history-toggle-btn {
   display: inline-flex;
@@ -704,7 +766,7 @@ body.study-mode .reading-bar { display: none; }
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(26,23,20,0.55);
+  background: var(--overlay);
   z-index: 330;
   align-items: center;
   justify-content: center;
@@ -716,7 +778,7 @@ body.study-mode .reading-bar { display: none; }
   border-radius: 16px;
   width: min(440px, 94vw);
   max-height: min(560px, 84vh);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  box-shadow: 0 20px 60px var(--shadow-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -861,8 +923,8 @@ body.study-mode .reading-bar { display: none; }
   font-size: 0.82rem;
   font-weight: 500;
 }
-.score-correct { color: #6fcfa8; }
-.score-wrong   { color: #e8897a; }
+.score-correct { color: var(--success-text); }
+.score-wrong   { color: var(--danger-text); }
 .score-accuracy { color: var(--ink3); font-size: 0.76rem; font-weight: 500; }
 .score-reset {
   font-size: 0.72rem;
@@ -900,7 +962,30 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   white-space: nowrap;
   transition: all 0.15s;
 }
-.help-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+.help-btn:hover { background: rgba(255,255,255,0.1); color: var(--on-dark); }
+
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.theme-toggle-btn:hover { background: rgba(255,255,255,0.1); color: var(--on-dark); }
+/* Icon swap: sun shown when currently dark (tap to go light), moon shown
+   when currently light (tap to go dark) — icon always represents the
+   theme you'll switch TO, matching common convention. */
+.theme-icon-moon { display: inline-flex; }
+.theme-icon-sun { display: none; }
+html[data-theme="dark"] .theme-icon-moon { display: none; }
+html[data-theme="dark"] .theme-icon-sun { display: inline-flex; }
 
 /* Infinite Scroll Sentinel element */
 #scroll-sentinel {
@@ -927,7 +1012,7 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(26,23,20,0.55);
+  background: var(--overlay);
   z-index: 300;
   align-items: center;
   justify-content: center;
@@ -938,7 +1023,7 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(26,23,20,0.55);
+  background: var(--overlay);
   z-index: 340;
   align-items: center;
   justify-content: center;
@@ -950,7 +1035,7 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   border-radius: 16px;
   width: min(360px, 92vw);
   padding: 1.4rem;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  box-shadow: 0 20px 60px var(--shadow-color);
 }
 .mini-modal h3 {
   font-family: "Noto Serif SC", serif;
@@ -992,14 +1077,14 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   cursor: pointer;
 }
 .mini-modal-actions .mini-btn-primary {
-  background: #1a1714;
-  color: #fff;
-  border-color: #1a1714;
+  background: var(--fixed-dark);
+  color: var(--on-dark);
+  border-color: var(--fixed-dark);
 }
 .mini-modal-actions .mini-btn-danger {
-  background: #c0392b;
-  color: #fff;
-  border-color: #c0392b;
+  background: var(--danger);
+  color: var(--on-dark);
+  border-color: var(--danger);
 }
 .help-modal {
   background: var(--surface);
@@ -1009,7 +1094,7 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   overflow-y: auto;
   padding: 2rem;
   position: relative;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  box-shadow: 0 20px 60px var(--shadow-color);
 }
 .help-modal h2 {
   font-family: "Noto Serif SC", serif;

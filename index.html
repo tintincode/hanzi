@@ -4,6 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>通用规范汉字表 — 汉字拼音学习</title>
+<script>
+  // Resolve + apply the theme before CSS paints, to avoid a flash of the
+  // wrong theme. Stored under its own key — deliberately separate from
+  // practice history (hanziStudyHistory.v1) and from any 阅读进度/练习进度
+  // data discussed elsewhere, since theme preference is a display setting,
+  // not study progress.
+  (function () {
+    try {
+      var stored = localStorage.getItem('hanziStudyTheme');
+      var theme = stored === 'dark' || stored === 'light'
+        ? stored
+        : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {
+      // localStorage unavailable (e.g. private mode edge cases) — fall
+      // back to light, matching the default look with no toggle applied.
+    }
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <!-- Link to the external CSS file -->
@@ -40,9 +59,14 @@
         <button class="view-btn" id="btn-compact">紧凑</button>
       </div>
     </div>
-    <div class="header-status">
+    <div class="header-status" style="display: none;">
       <div class="header-stats" id="stats">显示 8105 字</div>
     </div>
+
+    <button class="theme-toggle-btn" id="theme-toggle-btn" title="切换深色/浅色模式" aria-label="切换深色/浅色模式">
+      <svg class="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <svg class="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
 
     <button class="help-btn" id="help-btn" title="使用说明">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
