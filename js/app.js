@@ -143,7 +143,15 @@ const HanziApp = {
         HistoryManager.ensurePracticeSession();
         this.setPracticeActive(cardId);
         const resultType = markBtn.classList.contains('btn-correct') ? 'correct' : 'wrong';
-        this.applyCardResult(card, resultType);
+        this.gradeCard(card, resultType);
+        // Targeted blur — not the old blanket click-blur hack (which broke
+        // Tab navigation everywhere and was removed for that reason). This
+        // one only fires for the mark buttons specifically, because
+        // leaving focus parked here silently blocks the very next J/K/
+        // Space/arrow keypress (handlePracticeKey ignores keydowns whose
+        // target is a <button>) — without this, using the mouse once
+        // breaks keyboard shortcuts until the user clicks elsewhere.
+        markBtn.blur();
         return;
       }
 
@@ -391,6 +399,17 @@ const HanziApp = {
       // wrong-only review list instead of leaving it dangling in view.
       this.renderGrid();
     }
+  },
+
+  // Shared by both the mouse-click and keyboard (J/K) grading paths, so
+  // the two can't silently drift apart in behavior again — previously the
+  // click path only marked the card and stopped there, while the keyboard
+  // path also advanced to the next card, which looked like an unintended
+  // inconsistency.
+  gradeCard(card, result) {
+    this.applyCardResult(card, result);
+    this.advancePracticeCard();
+    HistoryManager.saveActiveSession(true);
   },
 
   undoLastMark() {
@@ -861,9 +880,7 @@ const HanziApp = {
       return true;
     }
 
-    this.applyCardResult(card, key === 'j' ? 'correct' : 'wrong');
-    this.advancePracticeCard();
-    HistoryManager.saveActiveSession(true);
+    this.gradeCard(card, key === 'j' ? 'correct' : 'wrong');
     return true;
   },
 
