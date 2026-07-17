@@ -59,10 +59,8 @@
         <button class="view-btn" id="btn-compact">紧凑</button>
       </div>
     </div>
-    <div class="header-status" style="display: none;">
-      <div class="header-stats" id="stats">显示 8105 字</div>
-    </div>
 
+    <div class="header-actions">
     <button class="theme-toggle-btn" id="theme-toggle-btn" title="切换深色/浅色模式" aria-label="切换深色/浅色模式">
       <svg class="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
       <svg class="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -72,6 +70,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       使用说明
     </button>
+  </div>
   </div>
 </header>
 
@@ -253,7 +252,16 @@
     </div>
 
     <div class="help-section">
-      <div class="help-section-title">学习模式</div>
+      <div class="help-section-title">阅读与练习模式</div>
+      <div class="help-row">
+        <div class="help-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div class="help-text">
+          <strong>阅读模式 — 拼音常显</strong>
+          <span>默认模式，所有拼音一直可见，适合浏览与初次学习。顶栏会显示「阅读进度」，实时反映当前浏览到的字在本次筛选范围中的位置。</span>
+        </div>
+      </div>
       <div class="help-row">
         <div class="help-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -269,7 +277,7 @@
         </div>
         <div class="help-text">
           <strong>键盘练习</strong>
-          <span>按 Space 或 Enter 显示拼音，按 J 标记正确，按 K 标记错误，并自动跳到下一个未标记汉字。按 U 可撤销上一次标记。</span>
+          <span>按 Space 或 Enter 显示拼音，按 J 标记正确，按 K 标记错误。鼠标点击「对／错」按钮效果相同 — 两种方式都会自动跳到下一个未标记汉字。按 U 可撤销上一次标记。</span>
         </div>
       </div>
       <div class="help-row">
@@ -279,6 +287,15 @@
         <div class="help-text">
           <strong>紧凑视图</strong>
           <span>点击「紧凑」切换到小字模式，一屏可显示更多汉字，适合快速浏览。</span>
+        </div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </div>
+        <div class="help-text">
+          <strong>深色模式</strong>
+          <span>点击顶栏右上角的圆形按钮可切换深色／浅色外观，偏好会保存在本机浏览器中。</span>
         </div>
       </div>
     </div>
@@ -301,6 +318,15 @@
         <div class="help-text">
           <strong>只看错题</strong>
           <span>点击「只看错题」可筛选出本次练习中标记错误的汉字，方便集中复习。答对后会自动从错题列表中移除。</span>
+        </div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="help-text">
+          <strong>导出／导入记录</strong>
+          <span>练习历史保存在本机浏览器中，清除缓存或更换设备会导致记录丢失。点击「历史记录」面板中的「导出」可保存为 JSON 文件备份，「导入」可从备份文件恢复 — 会与本机现有记录自动合并，不会覆盖。</span>
         </div>
       </div>
     </div>

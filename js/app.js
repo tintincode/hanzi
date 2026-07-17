@@ -53,7 +53,6 @@ const HanziApp = {
     this.dom = {
       gridContainer: document.getElementById('grid-container'),
       search: document.getElementById('search'),
-      stats: document.getElementById('stats'),
       filterLevelGroup: document.getElementById('filter-level-group'),
       btnNormal: document.getElementById('btn-normal'),
       btnStudy: document.getElementById('btn-study'),
@@ -123,7 +122,19 @@ const HanziApp = {
       this.state.practiceActiveId = null;
 
       if (this.state.isStudyMode) {
-        const session = HistoryManager.getLatestSessionForLevel(this.state.currentFilter) || HistoryManager.createPracticeSession(this.state.currentFilter);
+        let session;
+        if (HistoryManager.state.pendingFreshStart) {
+          // 新练习 was pressed just before this switch — honor that "start
+          // fresh" intent for whichever level the user actually lands on,
+          // instead of silently resuming this level's own old history
+          // (which is what would otherwise happen here). One-shot: consumed
+          // immediately, so any *further* level switches after this one go
+          // back to the normal resume-per-level behavior.
+          HistoryManager.state.pendingFreshStart = false;
+          session = HistoryManager.createPracticeSession(this.state.currentFilter);
+        } else {
+          session = HistoryManager.getLatestSessionForLevel(this.state.currentFilter) || HistoryManager.createPracticeSession(this.state.currentFilter);
+        }
         HistoryManager.activateSession(session);
       }
       this.renderGrid(true);
@@ -280,7 +291,6 @@ const HanziApp = {
 
   renderGrid(resetScroll = false) {
     this.state.visibleChars = this.getFiltered();
-    this.dom.stats.textContent = `显示 ${this.state.visibleChars.length.toLocaleString()} 字`;
     this.state.renderedCount = 0;
 
     if (resetScroll) {
@@ -375,6 +385,19 @@ const HanziApp = {
     return Templates.card(c, studyResult, this.state.isStudyMode, isActive);
   },
 
+  // Keeps the grading buttons' aria-pressed in sync with the card's actual
+  // marked state. Templates.card() sets it correctly at initial render,
+  // but applyCardResult()/undoLastMark()/clearCardStates() all mutate an
+  // already-rendered card's classes directly rather than re-rendering the
+  // template — so each of those needs to call this too, or aria-pressed
+  // would silently go stale the moment a card gets marked.
+  setCardAriaPressed(card, result) {
+    const correctBtn = card.querySelector('.btn-correct');
+    const wrongBtn = card.querySelector('.btn-wrong');
+    if (correctBtn) correctBtn.setAttribute('aria-pressed', result === 'correct' ? 'true' : 'false');
+    if (wrongBtn) wrongBtn.setAttribute('aria-pressed', result === 'wrong' ? 'true' : 'false');
+  },
+
   applyCardResult(card, result) {
     const id = parseInt(card.dataset.id, 10);
     const current = this.state.studyResults.get(id);
@@ -386,9 +409,11 @@ const HanziApp = {
 
     if (current === result) {
       this.state.studyResults.delete(id);
+      this.setCardAriaPressed(card, null);
     } else {
       this.state.studyResults.set(id, result);
       card.classList.add(result);
+      this.setCardAriaPressed(card, result);
     }
     this.updateScore();
     HistoryManager.state.historyDirty = true;
@@ -431,6 +456,7 @@ const HanziApp = {
       if (card) {
         card.classList.remove('correct', 'wrong', 'revealed');
         if (prevResult) card.classList.add(prevResult);
+        this.setCardAriaPressed(card, prevResult || null);
       }
     }
 
@@ -686,15 +712,26 @@ const HanziApp = {
     container.innerHTML = '<div class="stroke-loading">加载笔顺…</div>';
     this.state.hwWriter = null;
 
+    // HanziWriter draws raw SVG with literal colors passed at creation
+    // time — it has no idea about CSS variables or dark mode, so the
+    // stroke colors have to be resolved manually here to match whichever
+    // theme is currently active. Values are picked to match --ink /
+    // --border / --teal in each theme (see :root and
+    // :root[data-theme="dark"] in styles.css).
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const strokeColor = isDark ? '#f3ede2' : '#1a1714';
+    const outlineColor = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(26,23,20,0.12)';
+    const drawingColor = isDark ? '#4cb896' : '#0f6e56';
+
     try {
       this.state.hwWriter = HanziWriter.create('stroke-container', char, {
         width: 180,
         height: 180,
         padding: 12,
         showOutline: true,
-        strokeColor: '#1a1714',
-        outlineColor: 'rgba(26,23,20,0.12)',
-        drawingColor: '#0f6e56',
+        strokeColor: strokeColor,
+        outlineColor: outlineColor,
+        drawingColor: drawingColor,
         animationSpeed: 0.8,
         delayBetweenStrokes: 150,
         onLoadCharDataSuccess: () => {
@@ -722,9 +759,11 @@ const HanziApp = {
     this.state.hwWriter = null;
     document.getElementById('stroke-container').innerHTML = '<div class="stroke-loading">加载中…</div>';
     this.closeFocusTrap();
+    SpeechManager.stop();
   },
 
   navCard(dir) {
+    SpeechManager.stop();
     this.showModal(this.state.activeModalIdx + dir);
   },
 
@@ -806,6 +845,7 @@ const HanziApp = {
     this.dom.practiceCompleteToast.classList.remove('show');
     document.querySelectorAll('.char-card').forEach(c => {
       c.classList.remove('correct', 'wrong', 'revealed', 'active');
+      this.setCardAriaPressed(c, null);
     });
   },
 

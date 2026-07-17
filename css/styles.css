@@ -35,6 +35,8 @@
   --ink-hover: #333;              /* hover-lighten shade for dark ("primary") buttons */
   --overlay: rgba(26,23,20,0.55); /* modal/panel backdrop scrim */
   --shadow-color: rgba(0,0,0,0.25); /* consistent drop-shadow tint for floating elements */
+  --border-strong: rgba(26,23,20,0.2); /* char-card hover border — ~2x --border's opacity */
+  --shadow-soft: rgba(0,0,0,0.08); /* subtle card hover/active elevation shadow */
 
   /* Theme-invariant values. The header/toast/primary-button chrome is
      always dark regardless of overall theme (a deliberate choice — see
@@ -75,6 +77,8 @@
   --header-accent: #f0dca8;
   --overlay: rgba(0,0,0,0.65);
   --shadow-color: rgba(0,0,0,0.5);
+  --border-strong: rgba(255,255,255,0.24);
+  --shadow-soft: rgba(0,0,0,0.35);
   --bar-bg: rgba(20,18,13,0.94);
 }
 
@@ -109,7 +113,7 @@ header {
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 2px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 20px var(--shadow-color);
 }
 .header-inner {
   max-width: 1400px;
@@ -195,23 +199,11 @@ header {
 .filter-btn:hover { background: rgba(255,255,255,0.1); color: var(--on-dark); }
 .filter-btn.active { background: var(--header-accent); color: var(--fixed-dark); border-color: var(--header-accent); }
 
-.header-stats {
-  font-size: 0.8rem;
-  color: rgba(255,255,255,0.45);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
 .header-tools {
   display: flex;
   gap: 0.5rem;
   align-items: center;
   flex-wrap: wrap;
-}
-.header-status {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-left: auto;
 }
 
 /* Main */
@@ -272,8 +264,8 @@ main {
 }
 .char-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-  border-color: rgba(26,23,20,0.2);
+  box-shadow: 0 6px 20px var(--shadow-soft);
+  border-color: var(--border-strong);
 }
 .char-card.speaking {
   border-color: var(--accent);
@@ -282,7 +274,7 @@ main {
 .char-card.speaking .char-glyph { color: var(--accent); }
 .char-card.active {
   border-color: var(--teal);
-  box-shadow: 0 0 0 2px var(--teal-light), 0 6px 20px rgba(0,0,0,0.08);
+  box-shadow: 0 0 0 2px var(--teal-light), 0 6px 20px var(--shadow-soft);
 }
 .char-num {
   font-size: 0.7rem;
@@ -322,7 +314,7 @@ main {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(26,23,20,0.5);
+  background: var(--overlay);
   z-index: 200;
   align-items: center;
   justify-content: center;
@@ -340,7 +332,7 @@ main {
 .close-btn {
   position: absolute;
   top: 1rem; right: 1rem;
-  width: 32px; height: 32px;
+  width: 40px; height: 40px;
   border-radius: 50%;
   border: none;
   background: var(--bg);
@@ -520,6 +512,7 @@ body.study-mode .char-card.active.wrong .card-result-btns {
 }
 .card-result-btns button:hover { opacity: 0.8; }
 .card-result-btns button:active { transform: scale(0.96); }
+
 .btn-correct { background: var(--teal-light); color: var(--teal); }
 .btn-wrong   { background: var(--danger-bg-alt); color: var(--danger); }
 .key-hint {
@@ -691,7 +684,7 @@ body.study-mode .reading-bar { display: none; }
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: 8px;
-  height: 30px;
+  height: 40px;
   padding: 0 0.7rem;
   font-family: inherit;
   font-size: 0.76rem;
@@ -735,7 +728,7 @@ body.study-mode .reading-bar { display: none; }
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: 8px;
-  height: 30px;
+  height: 40px;
   padding: 0 0.7rem;
   font-family: inherit;
   font-size: 0.76rem;
@@ -825,8 +818,8 @@ body.study-mode .reading-bar { display: none; }
   background: none;
   color: var(--ink3);
   cursor: pointer;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -907,8 +900,8 @@ body.study-mode .reading-bar { display: none; }
   background: none;
   color: var(--ink3);
   cursor: pointer;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -947,6 +940,7 @@ body.compact .char-card { padding: 0.65rem 0.5rem; contain-intrinsic-size: auto 
 body.compact .card-result-btns { height: 20px; gap: 3px; }
 body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; }
 
+
 .help-btn {
   display: inline-flex;
   align-items: center;
@@ -964,12 +958,17 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
 }
 .help-btn:hover { background: rgba(255,255,255,0.1); color: var(--on-dark); }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .theme-toggle-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 1px solid rgba(255,255,255,0.25);
   background: transparent;
@@ -992,20 +991,6 @@ html[data-theme="dark"] .theme-icon-sun { display: inline-flex; }
   height: 40px;
   width: 100%;
 }
-
-/* Sentinel Loader */
-.sentinel-loader {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 15px;
-  color: var(--ink3);
-  font-size: 13px;
-}
-
-/* Help Modal popup */
-.help-modal-wrap { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100001; align-items: center; justify-content: center; padding: 1rem; }
-.help-modal-wrap.open { display: flex; }
 
 /* Help modal */
 .help-backdrop {
@@ -1154,7 +1139,7 @@ html[data-theme="dark"] .theme-icon-sun { display: inline-flex; }
 .help-close {
   position: absolute;
   top: 1rem; right: 1rem;
-  width: 32px; height: 32px;
+  width: 40px; height: 40px;
   border-radius: 50%;
   border: none;
   background: var(--bg);
@@ -1174,15 +1159,22 @@ html[data-theme="dark"] .theme-icon-sun { display: inline-flex; }
   line-height: 1.5;
   margin-top: 0.5rem;
 }
+/* Tablet tier — previously missing entirely; this width range fell
+   straight through to the full desktop layout with no tuning, cramped
+   into a narrower column. Explicit min-width bound (rather than relying
+   on source order against the ≤600px block below) so the two breakpoints
+   can never accidentally overlap or fight the cascade. */
+@media (max-width: 900px) and (min-width: 601px) {
+  .header-inner { gap: 1.25rem; }
+  main { padding: 1.25rem 1.25rem 3.5rem; }
+  .char-grid { grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 0.65rem; }
+}
 @media (max-width: 600px) {
   .header-inner { gap: 1rem; }
   .site-title { font-size: 1.1rem; }
   header { padding: 1.25rem 1rem 1rem; }
   main { padding: 1rem 0.75rem 3rem; }
   .char-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.6rem; }
-  .header-status {
-    min-width: 0;
-  }
   .practice-bar-inner { padding: 0.5rem 0.75rem; }
   .reading-bar-inner { padding: 0.5rem 0.75rem; }
   .history-toggle-btn span.history-label { display: none; }
@@ -1191,4 +1183,40 @@ html[data-theme="dark"] .theme-icon-sun { display: inline-flex; }
   .wrong-filter-btn { padding: 0 0.45rem; }
   .history-panel { width: min(420px, 96vw); }
   .key-hint { display: none; }
+}
+/* Touch-target overrides — bumps grading/nav/action buttons to a real
+   touch target on devices without real hover. Scoped to (hover: none)
+   rather than a screen-width breakpoint, since this is about input
+   capability (finger vs. cursor precision), not viewport size — a
+   touchscreen laptop at a wide viewport still needs the bigger target,
+   while a narrow desktop browser window doesn't.
+   Deliberately placed as the LAST block in the file: every rule in here
+   shares its base selector's specificity exactly, so with CSS resolving
+   same-specificity ties by source order, this is the only way to
+   guarantee every rule here always wins the cascade, regardless of where
+   in the file its corresponding base rule happens to live — this exact
+   class of bug (an override silently losing to a same-specificity rule
+   that appears later in the file) was caught once already for
+   body.compact .card-result-btns, and caught again for
+   .mini-modal-actions button during this consolidation pass; moving the
+   whole block here removes the need to reason about file position for
+   every future addition. */
+@media (hover: none) {
+  /* Per-card grading buttons — NOT applied on hover-capable devices: with
+     up to 8,105 cards in the "全部" view, enlarging these globally would
+     noticeably reduce how many cards fit on screen for mouse users,
+     undoing the density the existing 紧凑 (compact) mode is for. */
+  .card-result-btns { height: 44px; gap: 8px; }
+  .card-result-btns button { font-size: 0.85rem; }
+  body.compact .card-result-btns { height: 36px; gap: 5px; }
+  body.compact .card-result-btns button { font-size: 0.74rem; }
+
+  /* Singleton/low-repetition elements (flashcard nav, replay/speak,
+     mini-modal confirm/cancel) — no per-card density tradeoff here, so
+     these are bumped for consistency with the rest of this touch pass.
+     Padding-based sizing (rather than a fixed height) keeps their text
+     from looking cramped at the larger touch size. */
+  .fc-nav button { padding: 0.85rem 0.2rem; }
+  .replay-btn, .speak-btn { padding: 0.7rem 0.9rem; }
+  .mini-modal-actions button { padding: 0.75rem 0.9rem; }
 }

@@ -27,7 +27,15 @@ const HistoryManager = {
     historyState: { version: 1, activeSessionId: null, practiceMode: false, sessions: [] },
     activeSession: null,
     historySaveTimer: null,
-    historyDirty: false
+    historyDirty: false,
+    // Set by startNewPracticeSession(), consumed by the next level-filter
+    // switch: carries "start fresh" intent forward to whichever level the
+    // user actually lands on next, rather than scoping 新练习 only to
+    // whatever level happened to be selected at the moment it was pressed.
+    // Deliberately in-memory only (not part of historyState / not
+    // persisted) — a one-shot intent, not a durable setting; it naturally
+    // lapses on reload the same way an un-acted-on click would.
+    pendingFreshStart: false
   },
 
   app: null,
@@ -435,6 +443,11 @@ const HistoryManager = {
     if (!session) return;
     this.closeHistoryPanel();
     this.saveActiveSession(true);
+    // An explicit pick from the history panel always wins over any
+    // still-pending "start fresh on next switch" intent from an earlier
+    // 新练习 click — otherwise picking a specific old session here could
+    // get silently discarded by the very next level switch.
+    this.state.pendingFreshStart = false;
     this.activateSession(session);
     this.state.historyState.practiceMode = true;
     document.body.classList.add('study-mode');
@@ -448,6 +461,11 @@ const HistoryManager = {
   },
 
   startNewPracticeSession() {
+    // Carries "start fresh" intent forward to whichever level the user
+    // switches to next (see state.pendingFreshStart comment above),
+    // regardless of which branch below actually runs.
+    this.state.pendingFreshStart = true;
+
     if (this.state.activeSession && this.app.state.studyResults.size === 0) {
       const now = Date.now();
       this.state.activeSession.createdAt = now;

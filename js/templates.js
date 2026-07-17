@@ -16,15 +16,22 @@ export const Templates = {
       <div class="char-glyph" title="点击朗读">${c.c}</div>
       ${pyHTML}
       <div class="card-result-btns">
-        <button class="btn-correct" aria-label="标记正确" title="正确">对<span class="key-hint">J</span></button>
-        <button class="btn-wrong" aria-label="标记错误" title="错误">错<span class="key-hint">K</span></button>
+        <button class="btn-correct" aria-label="标记正确" aria-pressed="${studyResult === 'correct' ? 'true' : 'false'}" title="正确">对<span class="key-hint">J</span></button>
+        <button class="btn-wrong" aria-label="标记错误" aria-pressed="${studyResult === 'wrong' ? 'true' : 'false'}" title="错误">错<span class="key-hint">K</span></button>
       </div>
     </div>`;
   },
 
   sectionLabel(levelKey) {
     const labelMap = { '1': '一级字表 (3500字)', '2': '二级字表 (3000字)', '3': '三级字表 (1605字)' };
-    const colorMap = { '1': '#0f6e56', '2': '#e8a020', '3': '#c0392b' };
+    // CSS variable names, not literal hex — these are injected into an
+    // inline style attribute below, but var(--x) still resolves against
+    // the page's current theme there, same as it would in a stylesheet.
+    // Previously these were hardcoded hex values, which silently froze
+    // these three dots to their light-mode colors even in dark mode —
+    // invisible to both dark-mode CSS passes, since neither thought to
+    // check inside a JS template for colors.
+    const colorMap = { '1': 'var(--teal)', '2': 'var(--accent)', '3': 'var(--danger)' };
     return `<span class="level-dot" style="background:${colorMap[levelKey]}"></span>${labelMap[levelKey]}`;
   },
 
