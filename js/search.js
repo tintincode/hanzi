@@ -40,9 +40,10 @@ const SearchManager = {
   },
 
   /**
-   * Filters the character list based on search term, level filter, and wrong-only status.
+   * Filters the character list based on search term, level filter, wrong-only
+   * status, and bookmark-only status (阅读模式's 只看收藏 — see bookmarks.js).
    */
-  filter(query, levelFilter, levelRanges, wrongOnly, studyResults) {
+  filter(query, levelFilter, levelRanges, wrongOnly, studyResults, bookmarkOnly, bookmarkedSet) {
     let chars = allChars;
 
     // 1. Level Filter
@@ -76,9 +77,14 @@ const SearchManager = {
       });
     }
 
-    // 3. Wrong-Only Filter (mistakes review mode)
+    // 3. Wrong-Only Filter (mistakes review mode, 练习模式)
     if (wrongOnly && studyResults) {
       chars = chars.filter(c => studyResults.get(c.i) === 'wrong');
+    }
+
+    // 4. Bookmark-Only Filter (阅读模式's 只看收藏)
+    if (bookmarkOnly && bookmarkedSet) {
+      chars = chars.filter(c => bookmarkedSet.has(c.i));
     }
 
     return chars;

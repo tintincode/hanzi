@@ -2,7 +2,7 @@
 // Templates: defines HTML templates for rendering characters and history cards.
 
 export const Templates = {
-  card(c, studyResult, isStudyMode, isActive) {
+  card(c, studyResult, isStudyMode, isActive, isBookmarked) {
     const pinyins = c.p;
     const isMulti = pinyins.length > 1;
     const resultClass = studyResult ? ` ${studyResult}` : '';
@@ -11,7 +11,17 @@ export const Templates = {
       ? `<div class="char-pinyin multi multi-pinyins">${pinyins.map(p => `<span>${p}</span>`).join('')}</div>`
       : `<div class="char-pinyin">${pinyins[0] || ''}</div>`;
     
+    // Bookmark is 阅读模式-only by design (see bookmarks.js header comment
+    // for why) — simply not rendered at all in study mode, rather than
+    // rendered-but-hidden, to avoid any risk of stray interaction there.
+    const bookmarkHTML = !isStudyMode
+      ? `<button class="bookmark-btn${isBookmarked ? ' active' : ''}" data-bookmark-id="${c.i}" aria-label="${isBookmarked ? '取消收藏' : '收藏'}" aria-pressed="${isBookmarked ? 'true' : 'false'}" title="收藏">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="${isBookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>`
+      : '';
+
     return `<div class="char-card${resultClass}${activeClass}" data-id="${c.i}">
+      ${bookmarkHTML}
       <div class="char-num">${c.i}</div>
       <div class="char-glyph" title="点击朗读">${c.c}</div>
       ${pyHTML}

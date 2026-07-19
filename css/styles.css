@@ -29,6 +29,7 @@
   --success-bg: #f0faf5;          /* correct card background */
   --success-text: #6fcfa8;        /* lighter success accent for small inline text (score-correct) */
   --accent: #e8a020;              /* saturated gold — focus ring, "speaking" state */
+  --accent-bg-alt: #fdf3e0;       /* bookmark-count pill background (pale gold, mirrors --danger-bg-alt) */
   --accent-rgb: 232,160,32;       /* same as --accent, as r,g,b for use inside rgba() */
   --header-accent: #e8d5a3;       /* pale gold — header-only accents (site-title span, active level pill) */
   --on-dark: #fff;                /* text/icon color on any dark or saturated-color surface */
@@ -73,6 +74,7 @@
   --success-bg: #16281f;
   --success-text: #86e0bb;
   --accent: #f0b23e;
+  --accent-bg-alt: #3a2d15;
   --accent-rgb: 240,178,62;
   --header-accent: #f0dca8;
   --overlay: rgba(0,0,0,0.65);
@@ -262,6 +264,35 @@ main {
   content-visibility: auto;
   contain-intrinsic-size: auto 128px;
 }
+
+/* Bookmark star (阅读模式 only — not rendered at all in study mode, see
+   Templates.card()). Positioned top-LEFT specifically — top-right is
+   already claimed by .char-num (which uses align-self:flex-end to sit
+   there), so placing this on the same corner caused it to overlap the
+   character number. Inset slightly rather than flush against the
+   corner, so char-card's overflow:hidden doesn't clip it. */
+.bookmark-btn {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--ink3);
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+  z-index: 2;
+  transition: color 0.15s, background 0.15s;
+}
+.bookmark-btn:hover { background: var(--border); color: var(--ink2); }
+.bookmark-btn.active { color: var(--accent); }
+.bookmark-btn.active:hover { background: var(--accent-bg-alt); }
+
 .char-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px var(--shadow-soft);
@@ -343,6 +374,27 @@ main {
   transition: background 0.15s;
 }
 .close-btn:hover { background: var(--border); }
+/* Mirrors close-btn's size/style, positioned top-left instead of
+   top-right so it doesn't collide with it — same corner the grid card's
+   own bookmark star uses, for visual consistency between the two
+   surfaces. Hidden via the `hidden` attribute (not rendered-but-invisible)
+   when the modal was opened from 练习模式, matching the grid card
+   omitting its star entirely in study mode. */
+.fc-bookmark-btn {
+  position: absolute;
+  top: 1rem; left: 1rem;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg);
+  cursor: pointer;
+  color: var(--ink3);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.fc-bookmark-btn:hover { background: var(--border); color: var(--ink2); }
+.fc-bookmark-btn.active { color: var(--accent); }
+.fc-bookmark-btn.active:hover { background: var(--accent-bg-alt); }
 .fc-num { font-size: 0.75rem; color: var(--ink3); margin-bottom: 0.75rem; }
 .fc-char {
   font-family: 'Noto Serif SC', serif;
@@ -468,13 +520,34 @@ body.study-mode .char-card.wrong .char-pinyin { visibility: visible; }
 body.study-mode .char-card.correct {
   background: var(--success-bg);
   border-color: var(--teal);
+  animation: cardCorrectPop 0.3s ease;
 }
 body.study-mode .char-card.correct .char-glyph { color: var(--teal); }
 body.study-mode .char-card.wrong {
   background: var(--danger-bg);
   border-color: var(--danger);
+  animation: cardWrongShake 0.35s ease;
 }
 body.study-mode .char-card.wrong .char-glyph { color: var(--danger); }
+
+@keyframes cardCorrectPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+@keyframes cardWrongShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.study-mode .char-card.correct,
+  body.study-mode .char-card.wrong {
+    animation: none;
+  }
+}
 
 /* Result buttons shown after reveal */
 .card-result-btns {
@@ -628,6 +701,7 @@ body.study-mode .reading-bar { display: none; }
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex-wrap: wrap;
 }
 .reading-label {
   font-size: 0.78rem;
@@ -721,6 +795,84 @@ body.study-mode .reading-bar { display: none; }
   background: rgba(255,255,255,0.25);
   color: var(--on-dark);
 }
+
+/* Bookmark filter toggle (阅读模式's 只看收藏) — deliberately mirrors
+   .wrong-filter-btn's structure exactly (same layout/sizing/states), just
+   with accent/gold coloring instead of danger red, so it reads as a
+   sibling of the same UI pattern rather than a new one-off. */
+.bookmark-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  height: 40px;
+  padding: 0 0.7rem;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--ink2);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  /* Pushes the button to the right side of .reading-bar-inner, matching
+     where 只看错题 sits in .practice-bar-inner (via
+     .practice-progress-wrap's margin-right:auto) — the two bars swap in
+     and out of the exact same screen position when toggling modes, so
+     the filter toggle jumping from one side to the other was the
+     inconsistency being fixed here. */
+  margin-left: auto;
+}
+.bookmark-filter-btn svg { flex-shrink: 0; }
+.bookmark-filter-btn:hover { background: var(--border); }
+.bookmark-filter-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.bookmark-filter-btn:disabled:hover { background: var(--surface); }
+.bookmark-filter-btn .bookmark-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent-bg-alt);
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.bookmark-filter-btn[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-dark);
+}
+.bookmark-filter-btn[aria-pressed="true"] svg { color: var(--on-dark); }
+.bookmark-filter-btn[aria-pressed="true"] .bookmark-filter-count {
+  background: rgba(255,255,255,0.25);
+  color: var(--on-dark);
+}
+
+/* Clears every bookmark at once (behind a confirm dialog, see app.js) —
+   muted by default and only turns danger-red on hover, so it reads as
+   "here if you need it" rather than an alarming permanent fixture next
+   to the filter toggle. */
+.bookmark-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  color: var(--ink3);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bookmark-clear-btn:hover { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.bookmark-clear-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.bookmark-clear-btn:disabled:hover { background: var(--surface); color: var(--ink3); border-color: var(--border); }
+
 .history-toggle-btn {
   display: inline-flex;
   align-items: center;
@@ -741,6 +893,51 @@ body.study-mode .reading-bar { display: none; }
 .history-toggle-btn:hover { background: var(--border); }
 .history-toggle-btn svg { flex-shrink: 0; }
 .history-toggle-btn .history-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--teal-light);
+  color: var(--teal);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+/* Undo bar button (练习模式) — a momentary action, not a toggle (unlike
+   wrong-filter-btn/bookmark-filter-btn), so it has no [aria-pressed]
+   filled state, just default/hover/disabled. Gives mouse/touch users a
+   persistent, always-reachable way to undo — previously this was only
+   reachable via keyboard (U/Ctrl+Z) with no visible equivalent, then
+   briefly a transient toast that auto-hid after 4s. A permanent bar
+   button (like 只看错题/历史记录/新练习, which already live here) removes
+   that "window of opportunity" problem entirely, and repeated clicks
+   naturally walk back through the whole undo stack. Reuses
+   .history-count's neutral teal badge coloring — undo isn't a "danger"
+   or "special/favorited" state, just a neutral utility count. */
+.undo-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  height: 40px;
+  padding: 0 0.7rem;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--ink2);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.undo-bar-btn svg { flex-shrink: 0; }
+.undo-bar-btn:hover:not(:disabled) { background: var(--border); }
+.undo-bar-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.undo-bar-btn .undo-bar-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1181,6 +1378,10 @@ html[data-theme="dark"] .theme-icon-sun { display: inline-flex; }
   .history-toggle-btn { padding: 0 0.45rem; }
   .wrong-filter-btn span.wrong-filter-label { display: none; }
   .wrong-filter-btn { padding: 0 0.45rem; }
+  .bookmark-filter-btn span.bookmark-filter-label { display: none; }
+  .bookmark-filter-btn { padding: 0 0.45rem; }
+  .undo-bar-btn span.undo-bar-label { display: none; }
+  .undo-bar-btn { padding: 0 0.45rem; }
   .history-panel { width: min(420px, 96vw); }
   .key-hint { display: none; }
 }
@@ -1205,11 +1406,13 @@ html[data-theme="dark"] .theme-icon-sun { display: inline-flex; }
   /* Per-card grading buttons — NOT applied on hover-capable devices: with
      up to 8,105 cards in the "全部" view, enlarging these globally would
      noticeably reduce how many cards fit on screen for mouse users,
-     undoing the density the existing 紧凑 (compact) mode is for. */
+     undoing the density the existing 紧凑 (compact) mode is for. Same
+     reasoning applies to .bookmark-btn (阅读模式's per-card bookmark star). */
   .card-result-btns { height: 44px; gap: 8px; }
   .card-result-btns button { font-size: 0.85rem; }
   body.compact .card-result-btns { height: 36px; gap: 5px; }
   body.compact .card-result-btns button { font-size: 0.74rem; }
+  .bookmark-btn { width: 34px; height: 34px; }
 
   /* Singleton/low-repetition elements (flashcard nav, replay/speak,
      mini-modal confirm/cancel) — no per-card density tradeoff here, so

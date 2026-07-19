@@ -4,6 +4,7 @@ import { SpeechManager } from './speech.js';
 import { HistoryManager } from './history.js';
 import { SearchManager } from './search.js';
 import { Templates } from './templates.js';
+import { BookmarkManager } from './bookmarks.js';
 
 const HanziApp = {
   constants: {
@@ -22,8 +23,13 @@ const HanziApp = {
     searchTimer: null,
     completeToastTimer: null,
     hwWriter: null,
-    lastMarkAction: null,
+    // Stack of {id, prevResult} — replaces the old single-slot
+    // lastMarkAction. Every mark pushes an entry; undo pops the most
+    // recent one, so repeated undo (button clicks or U/Ctrl+Z) walks
+    // back through the whole session's marks, not just the last one.
+    markHistory: [],
     wrongOnly: false,
+    bookmarkOnly: false,
     isStudyMode: false,
     focusTrapContainer: null,
     focusTrapHandler: null,
@@ -36,9 +42,11 @@ const HanziApp = {
     SpeechManager.init(this.allChars);
     HistoryManager.init(this);
     SearchManager.init(this.allChars);
+    BookmarkManager.init();
     this.cacheDOM();
     this.bindEvents();
     this.setupInfiniteScroll();
+    this.updateBookmarkFilterUI();
     
     // The full 8,105-character dataset ships offline in data.js, so no
     // network fetch is needed here.
@@ -71,6 +79,9 @@ const HanziApp = {
       scoreAccuracy: document.getElementById('score-accuracy'),
       wrongFilterBtn: document.getElementById('wrong-filter-btn'),
       wrongFilterCount: document.getElementById('wrong-filter-count'),
+      bookmarkFilterBtn: document.getElementById('bookmark-filter-btn'),
+      bookmarkFilterCount: document.getElementById('bookmark-filter-count'),
+      bookmarkClearBtn: document.getElementById('bookmark-clear-btn'),
       historyToggleBtn: document.getElementById('history-toggle-btn'),
       historyCount: document.getElementById('history-count'),
       historyPanel: document.getElementById('history-panel'),
@@ -81,6 +92,8 @@ const HanziApp = {
       historyImportInput: document.getElementById('history-import-input'),
       scoreResetBtn: document.getElementById('score-reset-btn'),
       practiceCompleteToast: document.getElementById('practice-complete-toast'),
+      undoBarBtn: document.getElementById('undo-bar-btn'),
+      undoBarCount: document.getElementById('undo-bar-count'),
       siteTitleBtn: document.getElementById('site-title-btn'),
       scrollSentinel: document.getElementById('scroll-sentinel'),
       modal: document.getElementById('modal'),
@@ -88,6 +101,7 @@ const HanziApp = {
       fcChar: document.getElementById('fc-char'),
       fcPinyin: document.getElementById('fc-pinyin'),
       fcCloseBtn: document.getElementById('fc-close-btn'),
+      fcBookmarkBtn: document.getElementById('fc-bookmark-btn'),
       fcReplayBtn: document.getElementById('fc-replay-btn'),
       fcSpeakBtn: document.getElementById('fc-speak-btn'),
       fcPrevBtn: document.getElementById('fc-prev-btn'),
@@ -120,6 +134,13 @@ const HanziApp = {
 
       this.state.currentFilter = btn.dataset.level;
       this.state.practiceActiveId = null;
+      // Undo is scoped to "marks made in the currently-viewed level" —
+      // without this, a pending undo could reach back across a level
+      // switch to a character no longer in view at all. Clears the whole
+      // stack, not just the top entry, since any entry in it could
+      // reference the level being left.
+      this.state.markHistory = [];
+      this.updateUndoUI();
 
       if (this.state.isStudyMode) {
         let session;
@@ -141,6 +162,7 @@ const HanziApp = {
     });
 
     this.dom.gridContainer.addEventListener('click', (e) => {
+      const bookmarkBtn = e.target.closest('.bookmark-btn');
       const markBtn = e.target.closest('.card-result-btns button');
       const glyph = e.target.closest('.char-glyph');
       const card = e.target.closest('.char-card');
@@ -148,6 +170,12 @@ const HanziApp = {
       if (!card) return;
 
       const cardId = parseInt(card.dataset.id, 10);
+
+      if (bookmarkBtn) {
+        e.stopPropagation();
+        this.toggleBookmark(parseInt(bookmarkBtn.dataset.bookmarkId, 10));
+        return;
+      }
 
       if (markBtn) {
         e.stopPropagation();
@@ -202,6 +230,12 @@ const HanziApp = {
     });
 
     this.dom.wrongFilterBtn.addEventListener('click', () => this.toggleWrongOnly());
+    if (this.dom.bookmarkFilterBtn) {
+      this.dom.bookmarkFilterBtn.addEventListener('click', () => this.toggleBookmarkOnly());
+    }
+    if (this.dom.bookmarkClearBtn) {
+      this.dom.bookmarkClearBtn.addEventListener('click', () => this.clearAllBookmarks());
+    }
     this.dom.historyToggleBtn.addEventListener('click', () => HistoryManager.openHistoryPanel());
     this.dom.historyPanelClose.addEventListener('click', () => HistoryManager.closeHistoryPanel());
     this.dom.historyPanel.addEventListener('click', (e) => { if (e.target === this.dom.historyPanel) HistoryManager.closeHistoryPanel(); });
@@ -216,6 +250,12 @@ const HanziApp = {
     this.dom.siteTitleBtn.addEventListener('click', () => this.goHome());
 
     this.dom.fcCloseBtn.addEventListener('click', () => this.closeModal());
+    if (this.dom.fcBookmarkBtn) {
+      this.dom.fcBookmarkBtn.addEventListener('click', () => {
+        const openChar = this.state.visibleChars[this.state.activeModalIdx];
+        if (openChar) this.toggleBookmark(openChar.i);
+      });
+    }
     this.dom.fcPrimaryCloseBtn.addEventListener('click', () => this.closeModal());
     this.dom.fcReplayBtn.addEventListener('click', () => this.replayStrokes());
     this.dom.fcSpeakBtn.addEventListener('click', () => this.speakModalChar());
@@ -255,6 +295,19 @@ const HanziApp = {
       });
     }
 
+    if (this.dom.undoBarBtn) {
+      this.dom.undoBarBtn.addEventListener('click', () => {
+        this.undoLastMark();
+        // Same targeted blur as the grading buttons (see markBtn.blur()
+        // above) and for the same reason — arguably more important here,
+        // since 撤销 is specifically meant to be used mid-flow during a
+        // keyboard-driven J/K grading session. Without this, clicking
+        // undo once would silently swallow the very next J/K/U/Space/
+        // arrow keypress until the user clicked elsewhere first.
+        this.dom.undoBarBtn.blur();
+      });
+    }
+
     if (this.dom.themeToggleBtn) {
       this.dom.themeToggleBtn.addEventListener('click', () => {
         const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
@@ -285,7 +338,12 @@ const HanziApp = {
       this.state.currentFilter,
       this.constants.LEVEL_RANGES,
       this.state.wrongOnly,
-      this.state.studyResults
+      this.state.studyResults,
+      // Bookmark filtering is 阅读模式-only by design — guarded here
+      // (rather than relying on bookmarkOnly always being reset on mode
+      // switch) so it can never silently carry into 练习模式's view.
+      this.state.bookmarkOnly && !this.state.isStudyMode,
+      BookmarkManager.getSet()
     );
   },
 
@@ -382,7 +440,7 @@ const HanziApp = {
   cardHTML(c) {
     const studyResult = this.state.studyResults.get(c.i);
     const isActive = c.i === this.state.practiceActiveId;
-    return Templates.card(c, studyResult, this.state.isStudyMode, isActive);
+    return Templates.card(c, studyResult, this.state.isStudyMode, isActive, BookmarkManager.isBookmarked(c.i));
   },
 
   // Keeps the grading buttons' aria-pressed in sync with the card's actual
@@ -398,11 +456,24 @@ const HanziApp = {
     if (wrongBtn) wrongBtn.setAttribute('aria-pressed', result === 'wrong' ? 'true' : 'false');
   },
 
+  // Keeps the 撤销 bar button's count badge and disabled state in sync
+  // with the undo stack. Called after every mark and every undo.
+  updateUndoUI() {
+    if (!this.dom.undoBarBtn || !this.dom.undoBarCount) return;
+    const count = this.state.markHistory.length;
+    this.dom.undoBarCount.textContent = String(count);
+    this.dom.undoBarBtn.disabled = count === 0;
+  },
+
   applyCardResult(card, result) {
     const id = parseInt(card.dataset.id, 10);
     const current = this.state.studyResults.get(id);
 
-    this.state.lastMarkAction = { id, prevResult: current };
+    this.state.markHistory.push({ id, prevResult: current });
+    // Defensive cap — a very long marathon session shouldn't let this grow
+    // unbounded. 50 is comfortably more than anyone would realistically
+    // want to walk back through in one sitting.
+    if (this.state.markHistory.length > 50) this.state.markHistory.shift();
 
     card.classList.remove('revealed');
     card.classList.remove('correct', 'wrong');
@@ -416,6 +487,7 @@ const HanziApp = {
       this.setCardAriaPressed(card, result);
     }
     this.updateScore();
+    this.updateUndoUI();
     HistoryManager.state.historyDirty = true;
     HistoryManager.scheduleHistorySave();
 
@@ -438,8 +510,8 @@ const HanziApp = {
   },
 
   undoLastMark() {
-    if (!this.state.lastMarkAction) return false;
-    const { id, prevResult } = this.state.lastMarkAction;
+    if (this.state.markHistory.length === 0) return false;
+    const { id, prevResult } = this.state.markHistory.pop();
 
     if (prevResult) {
       this.state.studyResults.set(id, prevResult);
@@ -465,10 +537,94 @@ const HanziApp = {
     if (activeCard) activeCard.scrollIntoView({ block: 'center', behavior: 'smooth' });
 
     this.updateScore();
+    this.updateUndoUI();
     HistoryManager.state.historyDirty = true;
     HistoryManager.scheduleHistorySave();
-    this.state.lastMarkAction = null;
     return true;
+  },
+
+  // Applies visual state to any bookmark button — the grid card's star,
+  // the flashcard modal's button, or (in principle) any future surface —
+  // without knowing or caring which one it's touching.
+  setBookmarkBtnState(btn, isBookmarked) {
+    btn.classList.toggle('active', isBookmarked);
+    btn.setAttribute('aria-pressed', isBookmarked ? 'true' : 'false');
+    btn.setAttribute('aria-label', isBookmarked ? '取消收藏' : '收藏');
+    const svg = btn.querySelector('svg');
+    if (svg) svg.setAttribute('fill', isBookmarked ? 'currentColor' : 'none');
+  },
+
+  // Single source of truth for toggling a bookmark, called from both the
+  // grid card's star and the flashcard modal's button — keeps both
+  // surfaces in sync with each other regardless of which one was clicked,
+  // rather than each maintaining its own toggle logic that could drift
+  // apart (same principle as gradeCard() unifying mouse/keyboard grading
+  // earlier in this app).
+  toggleBookmark(id) {
+    const isNowBookmarked = BookmarkManager.toggle(id);
+
+    const card = document.querySelector(`.char-card[data-id="${id}"]`);
+    const cardBtn = card ? card.querySelector('.bookmark-btn') : null;
+    if (cardBtn) this.setBookmarkBtnState(cardBtn, isNowBookmarked);
+
+    const openChar = this.state.visibleChars[this.state.activeModalIdx];
+    if (this.dom.fcBookmarkBtn && openChar && openChar.i === id) {
+      this.setBookmarkBtnState(this.dom.fcBookmarkBtn, isNowBookmarked);
+    }
+
+    this.updateBookmarkFilterUI();
+    if (this.state.bookmarkOnly && !isNowBookmarked) {
+      // Just unbookmarked while viewing 只看收藏 — drop it from view,
+      // matching the existing wrongOnly regrade-away pattern.
+      this.renderGrid();
+    }
+    return isNowBookmarked;
+  },
+
+  // Keeps the 只看收藏 toggle's badge count and disabled state — and the
+  // 清空收藏 button's disabled state — in sync. Called after any bookmark
+  // toggle, and once at startup/mode-switch so it's accurate before the
+  // user touches anything.
+  updateBookmarkFilterUI() {
+    const count = BookmarkManager.count();
+    if (this.dom.bookmarkFilterCount && this.dom.bookmarkFilterBtn) {
+    this.dom.bookmarkFilterCount.textContent = String(count);
+    this.dom.bookmarkFilterBtn.disabled = count === 0 && !this.state.bookmarkOnly;
+    }
+    if (this.dom.bookmarkClearBtn) {
+      this.dom.bookmarkClearBtn.disabled = count === 0;
+    }
+  },
+
+  // Removes every bookmark at once, behind the same danger-confirm dialog
+  // pattern already used for deleting a practice session in the History
+  // panel. If 只看收藏 happens to be active, turns it off too — staying on
+  // a filter that would now show nothing forever would just be confusing.
+  clearAllBookmarks() {
+    const count = BookmarkManager.count();
+    if (count === 0) return;
+    this.openMiniModal({
+      title: '清空收藏',
+      text: `确定要清空全部 ${count} 个收藏吗？此操作无法撤销。`,
+      confirmLabel: '清空',
+      danger: true,
+      onConfirm: () => {
+        BookmarkManager.clear();
+        this.updateBookmarkFilterUI();
+        if (this.state.bookmarkOnly) {
+          this.state.bookmarkOnly = false;
+          if (this.dom.bookmarkFilterBtn) this.dom.bookmarkFilterBtn.setAttribute('aria-pressed', 'false');
+        }
+        // Rebuilds every currently-rendered card fresh (reading bookmark
+        // state from BookmarkManager, now empty), so every star updates —
+        // cheaper to just re-render than to hunt down and reset each
+        // .bookmark-btn individually. The flashcard modal isn't touched
+        // by renderGrid(), but it's structurally impossible for it to be
+        // open here: it's a full-screen overlay covering the reading bar
+        // this button lives in, so reaching this click means it's closed.
+        this.renderGrid(true);
+      }
+    });
   },
 
   updateScore() {
@@ -704,6 +860,16 @@ const HanziApp = {
     const activeEl = this.ensureCardRendered(c.i);
     if (activeEl) { activeEl.classList.add('active'); activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
 
+    if (this.dom.fcBookmarkBtn) {
+      // 阅读模式 only, matching the grid card's own bookmark button — the
+      // flashcard modal is reachable from both modes (clicking a card's
+      // edge/pinyin/number opens it regardless of mode), so this has to
+      // be checked fresh on every open/navigate rather than being a
+      // fixed part of the modal's markup.
+      this.dom.fcBookmarkBtn.hidden = this.state.isStudyMode;
+      this.setBookmarkBtnState(this.dom.fcBookmarkBtn, BookmarkManager.isBookmarked(c.i));
+    }
+
     if (!wasOpen) this.openFocusTrap(this.dom.modal, this.dom.fcCloseBtn);
   },
 
@@ -809,7 +975,12 @@ const HanziApp = {
       this.state.practiceActiveId = null;
       this.state.studyResults.clear();
       this.clearCardStates();
-      this.updateReadingProgress();
+      // Rebuild the grid in 阅读模式's shape — without this, the DOM is
+      // left however it was last rendered while entering 练习模式 (which
+      // omits bookmark buttons entirely, since Templates.card() doesn't
+      // render them in study mode), so returning to 阅读模式 would show
+      // no bookmark stars at all despite bookmarks still being intact.
+      this.renderGrid(false);
     } else {
       HistoryManager.ensurePracticeSession();
       this.renderGrid(false);
@@ -836,6 +1007,14 @@ const HanziApp = {
     }
   },
 
+  toggleBookmarkOnly() {
+    this.state.bookmarkOnly = !this.state.bookmarkOnly;
+    if (this.dom.bookmarkFilterBtn) {
+      this.dom.bookmarkFilterBtn.setAttribute('aria-pressed', String(this.state.bookmarkOnly));
+    }
+    this.renderGrid(true);
+  },
+
   clearCardStates() {
     this.dom.scoreCorrect.textContent = '0';
     this.dom.scoreWrong.textContent = '0';
@@ -843,6 +1022,8 @@ const HanziApp = {
     this.dom.practiceProgressFill.style.width = '0%';
     this.dom.practiceProgressCount.textContent = '0 / 0';
     this.dom.practiceCompleteToast.classList.remove('show');
+    this.state.markHistory = [];
+    this.updateUndoUI();
     document.querySelectorAll('.char-card').forEach(c => {
       c.classList.remove('correct', 'wrong', 'revealed', 'active');
       this.setCardAriaPressed(c, null);
