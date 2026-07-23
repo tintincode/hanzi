@@ -41,6 +41,16 @@ export const StorageManager = {
     }
   },
 
+  // Trims in memory only — does NOT itself persist. Called from both
+  // load() and save(): load() trims the just-parsed state so an in-memory
+  // session list is never over MAX_HISTORY_SESSIONS, but that trim isn't
+  // written back to localStorage until the next save() (which trims again
+  // immediately before writing). In the narrow window between a load()'s
+  // trim and the first subsequent save(), the on-disk copy can still
+  // contain the untrimmed session list — inconsequential in practice
+  // (a crash in that window just means the same sessions get trimmed
+  // again on the next save()), but worth knowing this is "trim in memory"
+  // rather than "trim = persist".
   trim(historyState) {
     const sessions = historyState.sessions;
     if (!Array.isArray(sessions)) return;

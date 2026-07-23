@@ -11,14 +11,25 @@ import { Templates } from './templates.js';
 // study mode is on). So HistoryManager holds a reference to the host app
 // (set in init()) and reads/writes a handful of shared things through it:
 // app.state.{currentFilter, currentSearch, wrongOnly, studyResults,
-// practiceActiveId, isStudyMode, lastMarkAction}, app.dom, app.allChars,
+// practiceActiveId, isStudyMode, markHistory}, app.dom, app.allChars,
 // app.constants.LEVEL_RANGES, and a few app methods (renderGrid,
-// updateScore, updateFilterButtons, updateHeaderOffset, setStudy,
-// scrollToPracticeCard, syncPracticeSelection, openMiniModal).
+// updateScore, updateUndoUI, updateFilterButtons, updateHeaderOffset,
+// setStudy, scrollToPracticeCard, syncPracticeSelection, openMiniModal).
 //
 // Usage:
 //   HistoryManager.init(HanziApp); // once, after HanziApp.cacheDOM()
 //   HistoryManager.syncActiveSession(); // once, after bindEvents/setup
+
+// Standalone and deliberately `this`-free — renderHistoryPanelList() passes
+// this around as a bare function reference (into Templates.historyCard()),
+// which would silently lose any `this` binding if this were a method
+// instead. Keeping it a plain function makes that safe by construction
+// rather than by convention.
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
 
 const HistoryManager = {
   // Note: HISTORY_KEY / MAX_HISTORY_SESSIONS live in storage.js only —
@@ -87,6 +98,47 @@ const HistoryManager = {
     return Array.from(map.values());
   },
 
+  // Rebuilds a session from only the parts of an imported record we
+  // actually trust, rather than passing the raw parsed object straight
+  // into storage. In particular, `correct`/`wrong` are recomputed from
+  // `results` instead of trusting whatever counts the file claims — a
+  // hand-edited or corrupted backup could otherwise show a plausible-
+  // looking but wrong accuracy figure with no way to notice. Unrecognized
+  // result values, non-integer result keys, and malformed markHistory
+  // entries are silently dropped rather than rejecting the whole session,
+  // since a single bad field shouldn't discard an otherwise-good record.
+  sanitizeImportedSession(s) {
+    const results = {};
+    let correct = 0;
+    let wrong = 0;
+    for (const [id, val] of Object.entries(s.results || {})) {
+      if (!/^\d+$/.test(id)) continue; // keys must be plain character ids
+      if (val === 'c') { results[id] = 'c'; correct++; }
+      else if (val === 'w') { results[id] = 'w'; wrong++; }
+      // anything else (unrecognized value) is silently dropped
+    }
+
+    const markHistory = Array.isArray(s.markHistory)
+      ? s.markHistory.filter(m =>
+          m && Number.isInteger(m.id) &&
+          (m.prevResult === undefined || m.prevResult === null || m.prevResult === 'correct' || m.prevResult === 'wrong')
+        )
+      : [];
+
+    return {
+      id: s.id,
+      level: s.level,
+      label: typeof s.label === 'string' ? s.label : this.levelName(s.level),
+      createdAt: Number.isFinite(s.createdAt) ? s.createdAt : Date.now(),
+      updatedAt: Number.isFinite(s.updatedAt) ? s.updatedAt : Date.now(),
+      lastId: Number.isInteger(s.lastId) ? s.lastId : null,
+      correct,
+      wrong,
+      results,
+      markHistory
+    };
+  },
+
   importHistoryFromFile(file) {
     const alert = (title, text) => this.app.openMiniModal({ title, text, confirmLabel: '确定', onConfirm: () => {} });
 
@@ -105,9 +157,9 @@ const HistoryManager = {
         return;
       }
       // Basic sanity filter — keep only entries that actually look like sessions.
-      const validSessions = parsed.sessions.filter(s =>
-        s && typeof s.id === 'string' && typeof s.level !== 'undefined' && s.results && typeof s.results === 'object'
-      );
+      const validSessions = parsed.sessions
+        .filter(s => s && typeof s.id === 'string' && typeof s.level !== 'undefined' && s.results && typeof s.results === 'object')
+        .map(s => this.sanitizeImportedSession(s));
       if (!validSessions.length) {
         alert('导入失败', '文件中没有可识别的练习记录。');
         return;
@@ -187,7 +239,8 @@ const HistoryManager = {
       lastId: null,
       correct: 0,
       wrong: 0,
-      results: {}
+      results: {},
+      markHistory: []
     };
     // Not added to historyState.sessions / persisted yet — only happens once the
     // first card is actually marked, in saveActiveSession(). This avoids
@@ -225,7 +278,11 @@ const HistoryManager = {
 
   loadSessionResults(session) {
     this.app.state.studyResults.clear();
-    this.app.state.lastMarkAction = null;
+    // Restores the undo stack too, not just the final marks — without
+    // this, undo would still reset on every refresh/mode-switch even
+    // though the marks themselves persist, since there'd be nothing to
+    // rebuild the stack from.
+    this.app.state.markHistory = Array.isArray(session.markHistory) ? session.markHistory.slice() : [];
     const results = session.results || {};
     Object.entries(results).forEach(([id, result]) => {
       if (result === 'c') this.app.state.studyResults.set(parseInt(id, 10), 'correct');
@@ -233,6 +290,7 @@ const HistoryManager = {
     });
     this.app.state.practiceActiveId = session.lastId || null;
     this.app.updateScore();
+    this.app.updateUndoUI();
   },
 
   saveActiveSession(force = false) {
@@ -262,6 +320,7 @@ const HistoryManager = {
     this.state.activeSession.results = results;
     this.state.activeSession.correct = correct;
     this.state.activeSession.wrong = wrong;
+    this.state.activeSession.markHistory = this.app.state.markHistory.slice();
     this.state.activeSession.updatedAt = Date.now();
     this.state.historyState.activeSessionId = this.state.activeSession.id;
     this.state.historyDirty = false;
@@ -325,7 +384,7 @@ const HistoryManager = {
       const isComplete = total > 0 && reviewed >= total;
       const title = session.label || this.levelName(session.level);
       const meta = `${reviewed}/${total} 字 · 正确率 ${accuracy} · 对${session.correct || 0} / 错${session.wrong || 0}`;
-      return Templates.historyCard(session, isActive, isComplete, title, meta, iconEdit, iconDelete, this.escapeHtml);
+      return Templates.historyCard(session, isActive, isComplete, title, meta, iconEdit, iconDelete, escapeHtml);
     }).join('');
 
     this.app.dom.historyPanelList.querySelectorAll('.history-card').forEach(card => {
@@ -343,12 +402,6 @@ const HistoryManager = {
     this.app.dom.historyPanelList.querySelectorAll('.history-delete-btn').forEach(btn => {
       btn.addEventListener('click', (e) => { e.stopPropagation(); this.deleteSession(btn.dataset.sessionId); });
     });
-  },
-
-  escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
   },
 
   // Discards the active session if it's still empty (no cards marked yet) —

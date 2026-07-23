@@ -63,6 +63,16 @@ const SpeechManager = {
     }
     // Fill in any remaining readings using polyphonic characters as a
     // fallback (better than nothing, even if not perfectly unambiguous).
+    // Tie-break note: for a reading with no single-pronunciation owner,
+    // whichever polyphonic character happens to reach it *first* in
+    // allChars' array order wins — there's no ranking beyond that (not by
+    // frequency, not by character count, purely first-in-data.js). That's
+    // an acceptable outcome (any real character with that reading is a
+    // reasonable example to speak), but it does mean the example character
+    // chosen for a given ambiguous reading is implicitly pinned to
+    // data.js's current ordering — reordering that file could silently
+    // change which character gets spoken for these readings, with no
+    // error or warning to flag it.
     for (const c of allChars) {
       for (const p of c.p) {
         if (!pinyinIndex.has(p)) pinyinIndex.set(p, c.c);
@@ -132,7 +142,14 @@ const SpeechManager = {
           utt.rate = lang === 'pinyin' ? 0.7 : 0.85;
           let done = false;
           let errored = false;
-          const finish = () => { if (!done) { done = true; resolve(); } };
+          let safetyTimeoutId;
+          // Clears the safety-net timer below on every path that finishes
+          // this utterance (normal onend, a settled retry, or the timer
+          // itself) — previously this only guarded against double-resolve
+          // via `done`, leaving the timer running harmlessly in the
+          // background for up to UTTERANCE_TIMEOUT_MS after a normal
+          // completion instead of being cancelled outright.
+          const finish = () => { if (!done) { done = true; clearTimeout(safetyTimeoutId); resolve(); } };
           utt.onend = finish;
           utt.onerror = () => {
             errored = true;
@@ -160,7 +177,7 @@ const SpeechManager = {
           // utterance would hang the promise chain forever and block every
           // reading after it (e.g. remaining pronunciations of a polyphonic
           // character) from ever being spoken.
-          setTimeout(() => { if (!errored) finish(); }, UTTERANCE_TIMEOUT_MS);
+          safetyTimeoutId = setTimeout(() => { if (!errored) finish(); }, UTTERANCE_TIMEOUT_MS);
         } catch (e) {
           // Previously swallowed silently — warn so a real failure (e.g. a
           // browser rejecting the utterance outright) is at least visible

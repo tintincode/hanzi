@@ -178,6 +178,12 @@ header {
 }
 #search::placeholder { color: rgba(255,255,255,0.4); }
 #search:focus { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.15); }
+/* #search's own `outline: none` above has higher specificity (ID) than
+   the shared `input:focus-visible` rule near the top of this file, so
+   that shared ring never reaches this input — restore it explicitly here
+   so keyboard-focusing the search box gets the same visible ring as
+   every other control, on top of its existing border/background change. */
+#search:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .filter-btns {
   display: flex;
@@ -551,7 +557,7 @@ body.study-mode .char-card.wrong .char-glyph { color: var(--danger); }
 
 /* Result buttons shown after reveal */
 .card-result-btns {
-  display: none !important;
+  display: none;
   width: 100%;
   height: 22px;
   gap: 5px;
@@ -560,7 +566,7 @@ body.study-mode .char-card.wrong .char-glyph { color: var(--danger); }
   pointer-events: none;
 }
 body.study-mode .char-card .card-result-btns {
-  display: flex !important;
+  display: flex;
 }
 body.study-mode .char-card.revealed .card-result-btns,
 body.study-mode .char-card:hover .card-result-btns,
@@ -751,7 +757,14 @@ body.study-mode .reading-bar { display: none; }
 @media (max-width: 600px) {
   .back-to-top { right: 1rem; bottom: 1rem; width: 38px; height: 38px; }
 }
-.wrong-filter-btn {
+/* Shared "pill" action-button pattern used by the four bar buttons below
+   (只看错题 / 只看收藏 / 历史记录 / 撤销) — same size, border, background,
+   hover/disabled states, and icon+label+count layout in all four, so the
+   structural rules live here once instead of being copy-pasted per
+   button. Each button still keeps its own class for exactly the parts
+   that actually differ: --pill-accent (the toggle-pressed color) and the
+   count badge's resting background/color, both set just below. */
+.pill-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -768,11 +781,11 @@ body.study-mode .reading-bar { display: none; }
   flex-shrink: 0;
   white-space: nowrap;
 }
-.wrong-filter-btn svg { flex-shrink: 0; }
-.wrong-filter-btn:hover { background: var(--border); }
-.wrong-filter-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.wrong-filter-btn:disabled:hover { background: var(--surface); }
-.wrong-filter-btn .wrong-filter-count {
+.pill-btn svg { flex-shrink: 0; }
+.pill-btn:hover:not(:disabled) { background: var(--border); }
+.pill-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.pill-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -780,42 +793,36 @@ body.study-mode .reading-bar { display: none; }
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  background: var(--danger-bg-alt);
-  color: var(--danger);
   font-size: 0.68rem;
   font-weight: 700;
 }
-.wrong-filter-btn[aria-pressed="true"] {
-  background: var(--danger);
-  border-color: var(--danger);
+
+/* Toggle-pressed state — only 只看错题/只看收藏 are actual toggles
+   (aria-pressed), so this is the only place that state's styling is
+   defined; each toggle button just sets --pill-accent to its own color
+   (danger red for 只看错题, gold for 只看收藏) rather than redefining the
+   whole rule per button. 历史记录/撤销 never set aria-pressed="true", so
+   this simply never matches for them. */
+.pill-btn[aria-pressed="true"] {
+  background: var(--pill-accent);
+  border-color: var(--pill-accent);
   color: var(--on-dark);
 }
-.wrong-filter-btn[aria-pressed="true"] svg { color: var(--on-dark); }
-.wrong-filter-btn[aria-pressed="true"] .wrong-filter-count {
+.pill-btn[aria-pressed="true"] svg { color: var(--on-dark); }
+.pill-btn[aria-pressed="true"] .pill-count {
   background: rgba(255,255,255,0.25);
   color: var(--on-dark);
 }
 
-/* Bookmark filter toggle (阅读模式's 只看收藏) — deliberately mirrors
-   .wrong-filter-btn's structure exactly (same layout/sizing/states), just
-   with accent/gold coloring instead of danger red, so it reads as a
-   sibling of the same UI pattern rather than a new one-off. */
+.wrong-filter-btn { --pill-accent: var(--danger); }
+.wrong-filter-btn .pill-count { background: var(--danger-bg-alt); color: var(--danger); }
+
+/* Bookmark filter toggle (阅读模式's 只看收藏) — built on the same .pill-btn
+   base as 只看错题, just with accent/gold coloring instead of danger red,
+   so it reads as a sibling of the same UI pattern rather than a new
+   one-off. */
 .bookmark-filter-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 8px;
-  height: 40px;
-  padding: 0 0.7rem;
-  font-family: inherit;
-  font-size: 0.76rem;
-  font-weight: 500;
-  color: var(--ink2);
-  cursor: pointer;
-  flex-shrink: 0;
-  white-space: nowrap;
+  --pill-accent: var(--accent);
   /* Pushes the button to the right side of .reading-bar-inner, matching
      where 只看错题 sits in .practice-bar-inner (via
      .practice-progress-wrap's margin-right:auto) — the two bars swap in
@@ -824,33 +831,7 @@ body.study-mode .reading-bar { display: none; }
      inconsistency being fixed here. */
   margin-left: auto;
 }
-.bookmark-filter-btn svg { flex-shrink: 0; }
-.bookmark-filter-btn:hover { background: var(--border); }
-.bookmark-filter-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.bookmark-filter-btn:disabled:hover { background: var(--surface); }
-.bookmark-filter-btn .bookmark-filter-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: var(--accent-bg-alt);
-  color: var(--accent);
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-.bookmark-filter-btn[aria-pressed="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-dark);
-}
-.bookmark-filter-btn[aria-pressed="true"] svg { color: var(--on-dark); }
-.bookmark-filter-btn[aria-pressed="true"] .bookmark-filter-count {
-  background: rgba(255,255,255,0.25);
-  color: var(--on-dark);
-}
+.bookmark-filter-btn .pill-count { background: var(--accent-bg-alt); color: var(--accent); }
 
 /* Clears every bookmark at once (behind a confirm dialog, see app.js) —
    muted by default and only turns danger-red on hover, so it reads as
@@ -873,83 +854,21 @@ body.study-mode .reading-bar { display: none; }
 .bookmark-clear-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .bookmark-clear-btn:disabled:hover { background: var(--surface); color: var(--ink3); border-color: var(--border); }
 
-.history-toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 8px;
-  height: 40px;
-  padding: 0 0.7rem;
-  font-family: inherit;
-  font-size: 0.76rem;
-  font-weight: 500;
-  color: var(--ink2);
-  cursor: pointer;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.history-toggle-btn:hover { background: var(--border); }
-.history-toggle-btn svg { flex-shrink: 0; }
-.history-toggle-btn .history-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: var(--teal-light);
-  color: var(--teal);
-  font-size: 0.68rem;
-  font-weight: 700;
-}
+.history-toggle-btn .pill-count { background: var(--teal-light); color: var(--teal); }
 
 /* Undo bar button (练习模式) — a momentary action, not a toggle (unlike
-   wrong-filter-btn/bookmark-filter-btn), so it has no [aria-pressed]
-   filled state, just default/hover/disabled. Gives mouse/touch users a
-   persistent, always-reachable way to undo — previously this was only
-   reachable via keyboard (U/Ctrl+Z) with no visible equivalent, then
-   briefly a transient toast that auto-hid after 4s. A permanent bar
-   button (like 只看错题/历史记录/新练习, which already live here) removes
-   that "window of opportunity" problem entirely, and repeated clicks
-   naturally walk back through the whole undo stack. Reuses
-   .history-count's neutral teal badge coloring — undo isn't a "danger"
-   or "special/favorited" state, just a neutral utility count. */
-.undo-bar-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 8px;
-  height: 40px;
-  padding: 0 0.7rem;
-  font-family: inherit;
-  font-size: 0.76rem;
-  font-weight: 500;
-  color: var(--ink2);
-  cursor: pointer;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.undo-bar-btn svg { flex-shrink: 0; }
-.undo-bar-btn:hover:not(:disabled) { background: var(--border); }
-.undo-bar-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.undo-bar-btn .undo-bar-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: var(--teal-light);
-  color: var(--teal);
-  font-size: 0.68rem;
-  font-weight: 700;
-}
+   wrong-filter-btn/bookmark-filter-btn), so it never sets aria-pressed
+   and never touches --pill-accent; just default/hover/disabled via the
+   shared .pill-btn base. Gives mouse/touch users a persistent, always-
+   reachable way to undo — previously this was only reachable via
+   keyboard (U/Ctrl+Z) with no visible equivalent, then briefly a
+   transient toast that auto-hid after 4s. A permanent bar button (like
+   只看错题/历史记录/新练习, which already live here) removes that "window
+   of opportunity" problem entirely, and repeated clicks naturally walk
+   back through the whole undo stack. Reuses .history-toggle-btn's
+   neutral teal badge coloring — undo isn't a "danger" or
+   "special/favorited" state, just a neutral utility count. */
+.undo-bar-btn .pill-count { background: var(--teal-light); color: var(--teal); }
 
 /* History panel */
 .history-backdrop {
@@ -1175,13 +1094,17 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   flex-shrink: 0;
 }
 .theme-toggle-btn:hover { background: rgba(255,255,255,0.1); color: var(--on-dark); }
-/* Icon swap: sun shown when currently dark (tap to go light), moon shown
-   when currently light (tap to go dark) — icon always represents the
-   theme you'll switch TO, matching common convention. */
-.theme-icon-moon { display: inline-flex; }
-.theme-icon-sun { display: none; }
-html[data-theme="dark"] .theme-icon-moon { display: none; }
-html[data-theme="dark"] .theme-icon-sun { display: inline-flex; }
+/* Icon shows the CURRENT mode (not "what tapping switches to", unlike the
+   old 2-state version — that convention doesn't scale cleanly to a 3-way
+   light/dark/auto cycle, since you'd need to remember the cycle order to
+   know what the icon means). Keyed off data-theme-mode (the user's actual
+   choice) rather than data-theme (the resolved color), since in auto mode
+   those two can disagree — data-theme flips with the OS, but the icon
+   should keep showing "auto" throughout, not flicker between sun/moon. */
+.theme-icon-sun, .theme-icon-moon, .theme-icon-auto { display: none; }
+html[data-theme-mode="light"] .theme-icon-sun { display: inline-flex; }
+html[data-theme-mode="dark"] .theme-icon-moon { display: inline-flex; }
+html[data-theme-mode="auto"] .theme-icon-auto { display: inline-flex; }
 
 /* Infinite Scroll Sentinel element */
 #scroll-sentinel {
@@ -1374,14 +1297,8 @@ html[data-theme="dark"] .theme-icon-sun { display: inline-flex; }
   .char-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.6rem; }
   .practice-bar-inner { padding: 0.5rem 0.75rem; }
   .reading-bar-inner { padding: 0.5rem 0.75rem; }
-  .history-toggle-btn span.history-label { display: none; }
-  .history-toggle-btn { padding: 0 0.45rem; }
-  .wrong-filter-btn span.wrong-filter-label { display: none; }
-  .wrong-filter-btn { padding: 0 0.45rem; }
-  .bookmark-filter-btn span.bookmark-filter-label { display: none; }
-  .bookmark-filter-btn { padding: 0 0.45rem; }
-  .undo-bar-btn span.undo-bar-label { display: none; }
-  .undo-bar-btn { padding: 0 0.45rem; }
+  .pill-btn { padding: 0 0.45rem; }
+  .pill-btn-label { display: none; }
   .history-panel { width: min(420px, 96vw); }
   .key-hint { display: none; }
 }

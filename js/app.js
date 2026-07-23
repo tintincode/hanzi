@@ -5,6 +5,7 @@ import { HistoryManager } from './history.js';
 import { SearchManager } from './search.js';
 import { Templates } from './templates.js';
 import { BookmarkManager } from './bookmarks.js';
+import { ThemeManager } from './theme.js';
 
 const HanziApp = {
   constants: {
@@ -39,11 +40,20 @@ const HanziApp = {
   init() {
     this.allChars = ALL_CHARS; // Start with fast offline mock data
     this.charMap = new Map(this.allChars.map(c => [c.c, c]));
+    // Maps character id -> its rendered .char-card element, kept in sync
+    // by renderNextChunk() (populated) and renderGrid() (cleared on every
+    // full re-render). Lets id-based lookups (ensureCardRendered,
+    // getPracticeActiveCard, undoLastMark, toggleBookmark) be an O(1) Map
+    // read instead of a `document.querySelector('[data-id="..."]')` scan
+    // — the latter is fine for one-off lookups, but adds up during a fast
+    // J/K grading session, especially in the "全部" (8,105-char) view.
+    this.cardEls = new Map();
     SpeechManager.init(this.allChars);
     HistoryManager.init(this);
     SearchManager.init(this.allChars);
     BookmarkManager.init();
     this.cacheDOM();
+    ThemeManager.init(this);
     this.bindEvents();
     this.setupInfiniteScroll();
     this.updateBookmarkFilterUI();
@@ -308,19 +318,7 @@ const HanziApp = {
       });
     }
 
-    if (this.dom.themeToggleBtn) {
-      this.dom.themeToggleBtn.addEventListener('click', () => {
-        const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-        const next = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        try {
-          localStorage.setItem('hanziStudyTheme', next);
-        } catch (e) {
-          // localStorage unavailable — theme still applies for this session,
-          // just won't persist across reloads.
-        }
-      });
-    }
+    ThemeManager.bindEvents();
   },
 
   setupInfiniteScroll() {
@@ -350,6 +348,11 @@ const HanziApp = {
   renderGrid(resetScroll = false) {
     this.state.visibleChars = this.getFiltered();
     this.state.renderedCount = 0;
+    // Every full re-render discards whatever's currently in gridContainer
+    // below, so any element references cached from the previous render are
+    // about to go stale — clear before repopulating rather than risk a
+    // lookup returning a detached node.
+    this.cardEls.clear();
 
     if (resetScroll) {
       window.scrollTo({ top: 0 });
@@ -419,6 +422,13 @@ const HanziApp = {
           
         const html = run.chars.map(c => this.cardHTML(c)).join('');
         targetGrid.insertAdjacentHTML('beforeend', html);
+        // Register the newly-added elements in the id->element cache. Based
+        // on position (last N children) rather than a fresh query, since
+        // targetGrid may already be live in document (an existing section
+        // from a prior chunk) or still part of docFragment — this works
+        // identically either way.
+        const newEls = Array.from(targetGrid.children).slice(-run.chars.length);
+        run.chars.forEach((c, i) => this.cardEls.set(c.i, newEls[i]));
       });
 
       this.dom.gridContainer.appendChild(docFragment);
@@ -431,6 +441,8 @@ const HanziApp = {
       }
       const html = chunk.map(c => this.cardHTML(c)).join('');
       mainGrid.insertAdjacentHTML('beforeend', html);
+      const newEls = Array.from(mainGrid.children).slice(-chunk.length);
+      chunk.forEach((c, i) => this.cardEls.set(c.i, newEls[i]));
     }
 
     this.state.renderedCount = end;
@@ -524,7 +536,7 @@ const HanziApp = {
       // filtered (wrong-only) DOM before we try to focus/scroll to it.
       this.renderGrid();
     } else {
-      const card = document.querySelector(`.char-card[data-id="${id}"]`);
+      const card = this.cardEls.get(id) || null;
       if (card) {
         card.classList.remove('correct', 'wrong', 'revealed');
         if (prevResult) card.classList.add(prevResult);
@@ -563,7 +575,7 @@ const HanziApp = {
   toggleBookmark(id) {
     const isNowBookmarked = BookmarkManager.toggle(id);
 
-    const card = document.querySelector(`.char-card[data-id="${id}"]`);
+    const card = this.cardEls.get(id) || null;
     const cardBtn = card ? card.querySelector('.bookmark-btn') : null;
     if (cardBtn) this.setBookmarkBtnState(cardBtn, isNowBookmarked);
 
@@ -685,7 +697,7 @@ const HanziApp = {
 
   getPracticeActiveCard() {
     if (!this.state.practiceActiveId) return null;
-    return document.querySelector(`.char-card[data-id="${this.state.practiceActiveId}"]`);
+    return this.cardEls.get(this.state.practiceActiveId) || null;
   },
 
   getNextUnmarkedId(startIdx) {
@@ -706,7 +718,7 @@ const HanziApp = {
     while (this.state.renderedCount <= idx && this.state.renderedCount < this.state.visibleChars.length) {
       this.renderNextChunk();
     }
-    return document.querySelector(`.char-card[data-id="${id}"]`);
+    return this.cardEls.get(id) || null;
   },
 
   scrollToPracticeCard(id) {
