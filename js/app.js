@@ -986,6 +986,11 @@ const HanziApp = {
       HistoryManager.saveActiveSession(true);
       this.state.practiceActiveId = null;
       this.state.studyResults.clear();
+      // Wrong-only mode is a study-mode filter only. If the user leaves
+      // 练习模式 while it is active, it must be cleared so 阅读模式 can
+      // show all characters again instead of an empty wrong-only view.
+      this.state.wrongOnly = false;
+      if (this.dom.wrongFilterBtn) this.dom.wrongFilterBtn.setAttribute('aria-pressed', 'false');
       this.clearCardStates();
       // Rebuild the grid in 阅读模式's shape — without this, the DOM is
       // left however it was last rendered while entering 练习模式 (which
