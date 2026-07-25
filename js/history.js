@@ -38,15 +38,7 @@ const HistoryManager = {
     historyState: { version: 1, activeSessionId: null, practiceMode: false, sessions: [] },
     activeSession: null,
     historySaveTimer: null,
-    historyDirty: false,
-    // Set by startNewPracticeSession(), consumed by the next level-filter
-    // switch: carries "start fresh" intent forward to whichever level the
-    // user actually lands on next, rather than scoping 新练习 only to
-    // whatever level happened to be selected at the moment it was pressed.
-    // Deliberately in-memory only (not part of historyState / not
-    // persisted) — a one-shot intent, not a durable setting; it naturally
-    // lapses on reload the same way an un-acted-on click would.
-    pendingFreshStart: false
+    historyDirty: false
   },
 
   app: null,
@@ -128,6 +120,10 @@ const HistoryManager = {
     return {
       id: s.id,
       level: s.level,
+      // null (or absent, pre-chunking) means "whole level"; only accept a
+      // genuine non-negative integer otherwise, same distrust-the-file
+      // stance as everything else in this function.
+      chunkIndex: Number.isInteger(s.chunkIndex) && s.chunkIndex >= 0 ? s.chunkIndex : null,
       label: typeof s.label === 'string' ? s.label : this.levelName(s.level),
       createdAt: Number.isFinite(s.createdAt) ? s.createdAt : Date.now(),
       updatedAt: Number.isFinite(s.updatedAt) ? s.updatedAt : Date.now(),
@@ -222,18 +218,34 @@ const HistoryManager = {
     return range ? (range[1] - range[0] + 1) : 0;
   },
 
+  // How many characters chunk `chunkIndex` of `level` actually covers — the
+  // last chunk in a level is usually smaller than PRACTICE_GROUP_SIZE (e.g.
+  // 三级's 1605 characters don't divide evenly by 100), so this can't just
+  // return PRACTICE_GROUP_SIZE unconditionally.
+  chunkTotal(level, chunkIndex) {
+    const groupSize = this.app.constants.PRACTICE_GROUP_SIZE;
+    const levelTotal = this.levelTotal(level);
+    const start = chunkIndex * groupSize;
+    return Math.max(0, Math.min(start + groupSize, levelTotal) - start);
+  },
+
   formatSessionTime(ts) {
     const date = new Date(ts);
     const pad = n => String(n).padStart(2, '0');
     return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   },
 
-  createPracticeSession(level = this.app.state.currentFilter) {
+  createPracticeSession(level = this.app.state.currentFilter, chunkIndex = null) {
     const now = Date.now();
+    const namePart = chunkIndex != null ? `${this.levelName(level)} 组${chunkIndex + 1}` : this.levelName(level);
     const session = {
       id: `s_${now}_${Math.random().toString(36).slice(2, 8)}`,
       level,
-      label: `${this.levelName(level)} ${this.formatSessionTime(now)}`,
+      // null = whole-level session (the only kind that existed before
+      // chunking was added) — number = a fixed PRACTICE_GROUP_SIZE-sized
+      // group within the level, see openChunkPicker()/selectChunk() in app.js.
+      chunkIndex,
+      label: `${namePart} ${this.formatSessionTime(now)}`,
       createdAt: now,
       updatedAt: now,
       lastId: null,
@@ -257,9 +269,37 @@ const HistoryManager = {
   },
 
   getLatestSessionForLevel(level) {
+    // Whole-level only (chunkIndex null/absent) — deliberately does NOT
+    // match chunked sessions, so this keeps meaning exactly what it meant
+    // before chunking existed: "the most recent session covering this
+    // entire level." Used by the picker's 整个级别 cell and by
+    // ensurePracticeSession()'s fallback. For "any session touching this
+    // level, chunked or not" (e.g. a reasonable resume target after
+    // deleting the active one), see getLatestSessionForLevelAnyChunk below.
+    return this.state.historyState.sessions
+      .filter(s => s.level === level && s.chunkIndex == null)
+      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0] || null;
+  },
+
+  getLatestSessionForLevelAnyChunk(level) {
     return this.state.historyState.sessions
       .filter(s => s.level === level)
       .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0] || null;
+  },
+
+  getSessionForLevelChunk(level, chunkIndex) {
+    return this.state.historyState.sessions
+      .filter(s => s.level === level && s.chunkIndex === chunkIndex)
+      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0] || null;
+  },
+
+  // True when the currently-active session already covers `level` (whole or
+  // chunked, doesn't matter which) — used to decide whether entering/
+  // switching to this level in 练习模式 can resume directly, or needs to
+  // show the chunk picker first (see app.js's setStudy()/filterLevelGroup
+  // handler).
+  hasResumableSessionForLevel(level) {
+    return !!(this.state.activeSession && this.state.activeSession.level === level);
   },
 
   activateSession(session) {
@@ -267,6 +307,7 @@ const HistoryManager = {
     this.state.activeSession = session;
     this.state.historyState.activeSessionId = session.id;
     this.app.state.currentFilter = session.level || 'all';
+    this.app.state.practiceChunkIndex = (typeof session.chunkIndex === 'number') ? session.chunkIndex : null;
     this.app.state.currentSearch = '';
     this.app.dom.search.value = '';
     this.app.state.wrongOnly = false;
@@ -380,9 +421,11 @@ const HistoryManager = {
         ? `${Math.round((session.correct || 0) / ((session.correct || 0) + (session.wrong || 0)) * 100)}%`
         : '—';
       const isActive = session.id === this.state.historyState.activeSessionId;
-      const total = this.levelTotal(session.level);
+      const isChunked = typeof session.chunkIndex === 'number';
+      const total = isChunked ? this.chunkTotal(session.level, session.chunkIndex) : this.levelTotal(session.level);
       const isComplete = total > 0 && reviewed >= total;
-      const title = session.label || this.levelName(session.level);
+      const defaultTitle = isChunked ? `${this.levelName(session.level)} 组${session.chunkIndex + 1}` : this.levelName(session.level);
+      const title = session.label || defaultTitle;
       const meta = `${reviewed}/${total} 字 · 正确率 ${accuracy} · 对${session.correct || 0} / 错${session.wrong || 0}`;
       return Templates.historyCard(session, isActive, isComplete, title, meta, iconEdit, iconDelete, escapeHtml);
     }).join('');
@@ -426,6 +469,7 @@ const HistoryManager = {
 
   ensurePracticeSession() {
     if (this.state.activeSession && this.state.activeSession.level === this.app.state.currentFilter) {
+      this.app.state.practiceChunkIndex = (typeof this.state.activeSession.chunkIndex === 'number') ? this.state.activeSession.chunkIndex : null;
       this.loadSessionResults(this.state.activeSession);
       return this.state.activeSession;
     }
@@ -471,18 +515,26 @@ const HistoryManager = {
           this.state.activeSession = null;
           this.state.historyState.activeSessionId = null;
           const inStudyMode = this.app.state.isStudyMode;
-          const fallback = this.getLatestSessionForLevel(deletedLevel) || this.state.historyState.sessions[0] || null;
+          // Prefer another session still covering the same level (chunked or
+          // whole — whichever was touched most recently) over the previous
+          // "just grab sessions[0]" fallback, which could land on a
+          // completely unrelated level's session with no connection to what
+          // the user was just doing.
+          const fallback = this.getLatestSessionForLevelAnyChunk(deletedLevel) || this.state.historyState.sessions[0] || null;
           if (fallback) {
             this.activateSession(fallback);
+            this.app.renderGrid(true);
           } else if (inStudyMode) {
-            const newSession = this.createPracticeSession(this.app.state.currentFilter);
-            this.activateSession(newSession);
+            // Nothing left to resume for this level — back to the chunk
+            // picker rather than silently starting a brand-new whole-level
+            // session on the user's behalf.
+            this.app.openChunkPicker(this.app.state.currentFilter);
           } else {
             this.app.state.studyResults.clear();
             this.app.state.practiceActiveId = null;
             this.updateHistorySelect();
+            this.app.renderGrid(true);
           }
-          this.app.renderGrid(true);
         }
 
         this.saveHistoryState();
@@ -496,11 +548,6 @@ const HistoryManager = {
     if (!session) return;
     this.closeHistoryPanel();
     this.saveActiveSession(true);
-    // An explicit pick from the history panel always wins over any
-    // still-pending "start fresh on next switch" intent from an earlier
-    // 新练习 click — otherwise picking a specific old session here could
-    // get silently discarded by the very next level switch.
-    this.state.pendingFreshStart = false;
     this.activateSession(session);
     this.state.historyState.practiceMode = true;
     document.body.classList.add('study-mode');
@@ -513,31 +560,18 @@ const HistoryManager = {
     this.app.scrollToPracticeCard(this.app.state.practiceActiveId);
   },
 
+  // 新练习 (score-reset-btn). With chunking, "start fresh" is now just "go
+  // back and pick a chunk" — the old version of this method existed to
+  // relabel/reuse an already-empty active session or create a brand-new
+  // whole-level one immediately, both of which mattered a lot more when a
+  // session was necessarily the entire (thousands-strong) level. Flushing
+  // to the picker sidesteps that complexity entirely: opening the picker
+  // creates nothing by itself (same "not persisted until first mark"
+  // principle as createPracticeSession), so there's no clutter risk from
+  // returning to it.
   startNewPracticeSession() {
-    // Carries "start fresh" intent forward to whichever level the user
-    // switches to next (see state.pendingFreshStart comment above),
-    // regardless of which branch below actually runs.
-    this.state.pendingFreshStart = true;
-
-    if (this.state.activeSession && this.app.state.studyResults.size === 0) {
-      const now = Date.now();
-      this.state.activeSession.createdAt = now;
-      this.state.activeSession.updatedAt = now;
-      this.state.activeSession.label = `${this.levelName(this.state.activeSession.level)} ${this.formatSessionTime(now)}`;
-      this.saveHistoryState();
-      this.updateHistorySelect();
-      this.app.state.practiceActiveId = null;
-      this.app.syncPracticeSelection();
-      return;
-    }
-    this.saveActiveSession(true);
-    const session = this.createPracticeSession(this.app.state.currentFilter);
-    this.activateSession(session);
-    this.app.state.studyResults.clear();
-    this.app.state.practiceActiveId = null;
-    this.app.updateScore();
-    this.app.renderGrid(true);
-    this.saveActiveSession(true);
+    this.discardEmptyActiveSession();
+    this.app.openChunkPicker(this.app.state.currentFilter);
   }
 };
 

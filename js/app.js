@@ -10,7 +10,13 @@ import { ThemeManager } from './theme.js';
 const HanziApp = {
   constants: {
     LEVEL_RANGES: { 1: [1, 3500], 2: [3501, 6500], 3: [6501, 8105] },
-    CHUNK_SIZE: 200
+    CHUNK_SIZE: 200,
+    // Fixed size for 练习模式's chunk picker (see openChunkPicker/selectChunk
+    // below) — independent of CHUNK_SIZE above, which is an unrelated
+    // rendering-batch size for infinite scroll. A level's total character
+    // count (3500/3000/1605/8105) is too large to hand someone in one
+    // session; this splits it into fixed 100-character groups instead.
+    PRACTICE_GROUP_SIZE: 100
   },
   
   state: {
@@ -21,6 +27,12 @@ const HanziApp = {
     activeModalIdx: -1,
     studyResults: new Map(),
     practiceActiveId: null,
+    // null = no chunk restriction (either not in 练习模式, or an
+    // old-style whole-level session) — a number narrows getFiltered() to
+    // that one PRACTICE_GROUP_SIZE-sized slice of the current level. Only
+    // ever meaningful while isStudyMode is true — see
+    // getPracticeChunkRange()'s guard below.
+    practiceChunkIndex: null,
     searchTimer: null,
     completeToastTimer: null,
     hwWriter: null,
@@ -138,6 +150,12 @@ const HanziApp = {
       document.querySelectorAll('.filter-btn[data-level]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
 
+      // Flush/discard whatever was active *before* reassigning currentFilter
+      // below — saveActiveSession() stamps a flushed session with
+      // app.state.currentFilter, so this has to run while that still
+      // reflects the level being left, not the one being switched to
+      // (openChunkPicker() below also calls this, but by then it'd be too
+      // late — currentFilter would already point at the new level).
       if (this.state.isStudyMode) {
         HistoryManager.discardEmptyActiveSession();
       }
@@ -153,25 +171,19 @@ const HanziApp = {
       this.updateUndoUI();
 
       if (this.state.isStudyMode) {
-        let session;
-        if (HistoryManager.state.pendingFreshStart) {
-          // 新练习 was pressed just before this switch — honor that "start
-          // fresh" intent for whichever level the user actually lands on,
-          // instead of silently resuming this level's own old history
-          // (which is what would otherwise happen here). One-shot: consumed
-          // immediately, so any *further* level switches after this one go
-          // back to the normal resume-per-level behavior.
-          HistoryManager.state.pendingFreshStart = false;
-          session = HistoryManager.createPracticeSession(this.state.currentFilter);
+        this.openChunkPicker(this.state.currentFilter);
         } else {
-          session = HistoryManager.getLatestSessionForLevel(this.state.currentFilter) || HistoryManager.createPracticeSession(this.state.currentFilter);
+        this.renderGrid(true);
         }
-        HistoryManager.activateSession(session);
-      }
-      this.renderGrid(true);
     });
 
     this.dom.gridContainer.addEventListener('click', (e) => {
+      const chunkCell = e.target.closest('.chunk-cell');
+      if (chunkCell) {
+        this.selectChunk(chunkCell.dataset.level, chunkCell.dataset.chunk);
+        return;
+      }
+
       const bookmarkBtn = e.target.closest('.bookmark-btn');
       const markBtn = e.target.closest('.card-result-btns button');
       const glyph = e.target.closest('.char-glyph');
@@ -330,6 +342,26 @@ const HanziApp = {
     this.observer.observe(this.dom.scrollSentinel);
   },
 
+  // [lo, hi] (inclusive, in the same c.i id-space as LEVEL_RANGES) for the
+  // currently active practice chunk, or null when no chunk restriction
+  // applies. Gated on isStudyMode specifically (not just practiceChunkIndex
+  // being non-null) so that leftover chunk state can never leak into
+  // 阅读模式's view even if something forgets to clear it on mode switch —
+  // same defensive-guard-at-the-read-site pattern already used for
+  // bookmarkOnly in getFiltered() below.
+  getPracticeChunkRange() {
+    if (!this.state.isStudyMode || this.state.practiceChunkIndex == null) return null;
+    const level = this.state.currentFilter;
+    const base = level === 'all' ? 1 : this.constants.LEVEL_RANGES[level][0];
+    const levelTotal = level === 'all'
+      ? this.allChars.length
+      : (this.constants.LEVEL_RANGES[level][1] - this.constants.LEVEL_RANGES[level][0] + 1);
+    const groupSize = this.constants.PRACTICE_GROUP_SIZE;
+    const start = base + this.state.practiceChunkIndex * groupSize;
+    const end = Math.min(start + groupSize - 1, base + levelTotal - 1);
+    return [start, end];
+  },
+
   getFiltered() {
     return SearchManager.filter(
       this.state.currentSearch,
@@ -341,8 +373,156 @@ const HanziApp = {
       // (rather than relying on bookmarkOnly always being reset on mode
       // switch) so it can never silently carry into 练习模式's view.
       this.state.bookmarkOnly && !this.state.isStudyMode,
-      BookmarkManager.getSet()
+      BookmarkManager.getSet(),
+      this.getPracticeChunkRange()
     );
+  },
+
+  // A single "practice the whole thing" cell for `level` — 'all' means all
+  // 8105 characters as one session (level:'all', chunkIndex:null, same as
+  // how 练习模式 worked before chunking existed); a real level means that
+  // level's own whole-level session. fullWidth controls whether this cell
+  // spans its whole grid row (used when it's the lone whole-cell in a
+  // single-level picker) or sits compactly alongside siblings (used in the
+  // grouped 全部/整个一级/整个二级/整个三级 row — see openChunkPicker below).
+  buildWholeCell(level, fullWidth) {
+    const levelTotal = level === 'all'
+      ? this.allChars.length
+      : (this.constants.LEVEL_RANGES[level][1] - this.constants.LEVEL_RANGES[level][0] + 1);
+    const levelName = HistoryManager.levelName(level);
+    const session = HistoryManager.getLatestSessionForLevel(level);
+    const reviewed = session ? Object.keys(session.results || {}).length : 0;
+    const status = reviewed === 0 ? 'not-started' : (reviewed >= levelTotal ? 'done' : 'in-progress');
+    return {
+      chunkAttr: 'whole',
+      level,
+      label: level === 'all' ? '全部' : `整个${levelName}`,
+      meta: `${reviewed} / ${levelTotal}`,
+      status,
+      isWhole: fullWidth
+    };
+  },
+
+  // The numbered 组1…组N cells for a real level ('1'/'2'/'3', never 'all')
+  // — no whole-level cell included, since that's built separately by
+  // buildWholeCell above (openChunkPicker composes the two as needed).
+  buildChunkCells(level) {
+    const groupSize = this.constants.PRACTICE_GROUP_SIZE;
+    const range = this.constants.LEVEL_RANGES[level];
+    const base = range[0];
+    const levelTotal = range[1] - range[0] + 1;
+    const numChunks = Math.ceil(levelTotal / groupSize);
+
+    const cells = [];
+    for (let i = 0; i < numChunks; i++) {
+      const start = base + i * groupSize;
+      const end = Math.min(start + groupSize - 1, base + levelTotal - 1);
+      const chunkSize = end - start + 1;
+      const session = HistoryManager.getSessionForLevelChunk(level, i);
+      const reviewed = session ? Object.keys(session.results || {}).length : 0;
+      const status = reviewed === 0 ? 'not-started' : (reviewed >= chunkSize ? 'done' : 'in-progress');
+      cells.push({
+        chunkAttr: String(i),
+        level,
+        label: `组 ${i + 1}`,
+        meta: `${reviewed} / ${chunkSize}`,
+        status,
+        isWhole: false
+      });
+    }
+    return cells;
+  },
+
+  // One level's full picker section: its own whole-level cell (full width)
+  // followed by its 组1…组N cells. Used for a single-level picker (see
+  // openChunkPicker below) — 全部's picker builds its per-level sections
+  // without a whole-level cell instead, since those live together in a
+  // dedicated grouped row up top (buildWholeCell is called separately for
+  // each of 全部/整个一级/整个二级/整个三级 there). This is what keeps
+  // progress consistent between "组3 opened via 一级'的 own tab" and "组3
+  // opened via 全部'的 fanned-out view": both paths build the exact same
+  // cell for the exact same underlying session, since neither path ever
+  // invents a separate level:'all' chunk session space.
+  buildChunkSection(level, includeTitle) {
+    return {
+      titleHTML: includeTitle ? Templates.sectionLabel(level) : null,
+      cells: [this.buildWholeCell(level, true), ...this.buildChunkCells(level)]
+    };
+  },
+
+  // Shows the chunk-selection grid for `level` in place of the character
+  // grid, instead of jumping straight into a (potentially thousands-long)
+  // whole-level practice session. Called whenever 练习模式 is entered or
+  // switched to a level with no already-active resumable session (see
+  // setStudy()/the filterLevelGroup click handler) — an explicit resume
+  // (app boot, history-panel pick, or just toggling modes without
+  // switching level) bypasses this entirely and goes straight to the grid.
+  openChunkPicker(level) {
+    // Safety-net flush/discard for callers that haven't already done this
+    // themselves (setStudy, startNewPracticeSession, deleteSession's
+    // fallback all reach here without having flushed first). The
+    // filterLevelGroup click handler is the one exception — it must flush
+    // *before* reassigning currentFilter (saveActiveSession() stamps a
+    // flushed session with app.state.currentFilter), so it calls this
+    // itself first; by the time it reaches here, this is just a harmless
+    // no-op repeat (historyDirty is already false).
+    HistoryManager.discardEmptyActiveSession();
+
+    this.state.practiceChunkIndex = null;
+    this.state.practiceActiveId = null;
+    this.state.studyResults.clear();
+    this.state.markHistory = [];
+    this.state.wrongOnly = false;
+    this.dom.wrongFilterBtn.setAttribute('aria-pressed', 'false');
+    this.state.visibleChars = [];
+    this.state.renderedCount = 0;
+    this.cardEls.clear();
+    this.updateScore();
+    this.updateUndoUI();
+
+    const groupSize = this.constants.PRACTICE_GROUP_SIZE;
+    let headTitle, headSub, sections;
+    if (level === 'all') {
+      headTitle = '全部 · 选择练习组';
+      headSub = `每组 ${groupSize} 字 — 选择整级练习，或按级别挑选练习组`;
+      // 全部/整个一级/整个二级/整个三级 together as one grouped row, rather
+      // than each 整个X级 buried inside its own level's section — this is
+      // what the person asked for directly.
+      const wholeRow = {
+        titleHTML: '整级练习',
+        cells: ['all', '1', '2', '3'].map(lvl => this.buildWholeCell(lvl, false))
+      };
+      const levelSections = ['1', '2', '3'].map(lvl => ({
+        titleHTML: Templates.sectionLabel(lvl),
+        cells: this.buildChunkCells(lvl)
+      }));
+      sections = [wholeRow, ...levelSections];
+    } else {
+      headTitle = `${HistoryManager.levelName(level)} · 选择练习组`;
+      headSub = `每组 ${groupSize} 字，点击继续上次进度或开始新的一组`;
+      sections = [this.buildChunkSection(level, false)];
+    }
+
+    this.dom.gridContainer.innerHTML = Templates.chunkPicker(headTitle, headSub, sections);
+    window.scrollTo({ top: 0 });
+  },
+
+  // Handles a click on a chunk-picker cell (see openChunkPicker above) —
+  // level/chunkAttr are read from the cell's own data-level/data-chunk
+  // (not assumed from this.state.currentFilter), since a cell in 全部's
+  // fanned-out picker belongs to a specific real level regardless of which
+  // tab was active when the picker opened. chunkAttr is either 'whole' or
+  // a stringified chunk index.
+  selectChunk(level, chunkAttr) {
+    const chunkIndex = chunkAttr === 'whole' ? null : parseInt(chunkAttr, 10);
+    const session = chunkIndex === null
+      ? (HistoryManager.getLatestSessionForLevel(level) || HistoryManager.createPracticeSession(level, null))
+      : (HistoryManager.getSessionForLevelChunk(level, chunkIndex) || HistoryManager.createPracticeSession(level, chunkIndex));
+    HistoryManager.activateSession(session);
+    this.renderGrid(false);
+    HistoryManager.saveActiveSession(true);
+    this.scrollToPracticeCard(this.state.practiceActiveId);
+    HistoryManager.saveHistoryState();
   },
 
   renderGrid(resetScroll = false) {
@@ -986,11 +1166,6 @@ const HanziApp = {
       HistoryManager.saveActiveSession(true);
       this.state.practiceActiveId = null;
       this.state.studyResults.clear();
-      // Wrong-only mode is a study-mode filter only. If the user leaves
-      // 练习模式 while it is active, it must be cleared so 阅读模式 can
-      // show all characters again instead of an empty wrong-only view.
-      this.state.wrongOnly = false;
-      if (this.dom.wrongFilterBtn) this.dom.wrongFilterBtn.setAttribute('aria-pressed', 'false');
       this.clearCardStates();
       // Rebuild the grid in 阅读模式's shape — without this, the DOM is
       // left however it was last rendered while entering 练习模式 (which
@@ -999,10 +1174,14 @@ const HanziApp = {
       // no bookmark stars at all despite bookmarks still being intact.
       this.renderGrid(false);
     } else {
+      if (HistoryManager.hasResumableSessionForLevel(this.state.currentFilter)) {
       HistoryManager.ensurePracticeSession();
       this.renderGrid(false);
       HistoryManager.saveActiveSession(true);
       this.scrollToPracticeCard(this.state.practiceActiveId);
+      } else {
+        this.openChunkPicker(this.state.currentFilter);
+      }
     }
     HistoryManager.saveHistoryState();
     this.updateHeaderOffset();

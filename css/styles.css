@@ -502,6 +502,75 @@ main {
 .empty .empty-char { font-family: 'Noto Serif SC', serif; font-size: 3rem; opacity: 0.2; }
 .empty p { margin-top: 0.75rem; font-size: 0.9rem; }
 
+/* Chunk picker — shown in #grid-container in place of the character grid
+   when entering 练习模式 for a level with no already-active session (see
+   app.js's openChunkPicker). Deliberately reuses .history-card-badge's
+   in-progress/done color language (teal accent, neutral border) rather
+   than inventing a new status-color vocabulary. */
+.chunk-picker {
+  padding: 0.5rem 0 2rem;
+}
+.chunk-picker-head {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.chunk-picker-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.chunk-picker-sub {
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--ink3);
+}
+.chunk-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.chunk-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 0.85rem 0.5rem;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--ink2);
+}
+.chunk-cell:hover { background: var(--bg); border-color: var(--ink3); }
+.chunk-cell-label { font-size: 0.85rem; font-weight: 600; }
+.chunk-cell-meta { font-size: 0.72rem; color: var(--ink3); }
+
+/* 整个级别 stands apart from the numbered groups — spans the full row and
+   sits visually first, since it's a different kind of choice (commit to
+   the whole level) rather than one more group among equals. */
+.chunk-cell--whole {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 0.9rem 1rem;
+}
+.chunk-cell--whole .chunk-cell-label { font-size: 0.9rem; }
+
+.chunk-cell--in-progress {
+  background: var(--teal-light);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+.chunk-cell--in-progress .chunk-cell-meta { color: var(--teal); opacity: 0.85; }
+.chunk-cell--done {
+  background: var(--border);
+  color: var(--ink2);
+}
+.chunk-cell--done .chunk-cell-meta { color: var(--ink3); }
+
 .view-btn {
   padding: 0.35rem 0.7rem;
   border-radius: 6px;

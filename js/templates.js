@@ -66,5 +66,35 @@ export const Templates = {
 
   emptyHistory() {
     return '<div class="history-panel-empty">暂无练习记录<br>开始练习模式后会自动保存进度</div>';
+  },
+
+  // Shown in place of the character grid when entering 练习模式 for a level
+  // (or 全部) with no already-active session (see app.js's openChunkPicker /
+  // HanziApp.selectChunk). `sections` is [{ titleHTML, cells }] — titleHTML
+  // is pre-built markup (typically from sectionLabel() above, for the same
+  // colored-dot level headers used in the character grid itself) or null
+  // to omit a header (used when the picker is already scoped to one level,
+  // so a redundant per-section label would just repeat what
+  // chunk-picker-head already says). Each cell is { chunkAttr, level,
+  // label, meta, status, isWhole } — status is 'not-started' | 'in-progress'
+  // | 'done', computed by the caller from that cell's own persisted
+  // session (if any); `level` is the cell's *real* level (never 'all'),
+  // read back by app.js's click handler so 全部's picker can resolve each
+  // cell to the correct underlying level-scoped session.
+  chunkPicker(headTitle, headSub, sections) {
+    const sectionsHTML = sections.map(sec => `
+      ${sec.titleHTML ? `<div class="section-label">${sec.titleHTML}</div>` : ''}
+      <div class="chunk-picker-grid">${sec.cells.map(cell => `
+        <button class="chunk-cell chunk-cell--${cell.status}${cell.isWhole ? ' chunk-cell--whole' : ''}" data-chunk="${cell.chunkAttr}" data-level="${cell.level}">
+        <span class="chunk-cell-label">${cell.label}</span>
+        <span class="chunk-cell-meta">${cell.meta}</span>
+        </button>`).join('')}</div>`).join('');
+    return `<div class="chunk-picker">
+      <div class="chunk-picker-head">
+        <h2 class="chunk-picker-title">${headTitle}</h2>
+        <p class="chunk-picker-sub">${headSub}</p>
+      </div>
+      ${sectionsHTML}
+    </div>`;
   }
 };

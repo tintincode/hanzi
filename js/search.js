@@ -41,9 +41,16 @@ const SearchManager = {
 
   /**
    * Filters the character list based on search term, level filter, wrong-only
-   * status, and bookmark-only status (阅读模式's 只看收藏 — see bookmarks.js).
+   * status, bookmark-only status (阅读模式's 只看收藏 — see bookmarks.js), and
+   * an optional practice-chunk range (练习模式's fixed-size grouping within a
+   * level — see app.js's getPracticeChunkRange/openChunkPicker). chunkRange
+   * is [lo, hi] (inclusive, in the same c.i id-space as levelRanges) or
+   * null/undefined when no chunk is active — applied right after the level
+   * filter, before search matching, so searching *within* an active practice
+   * chunk stays scoped to that chunk rather than reaching across the whole
+   * level.
    */
-  filter(query, levelFilter, levelRanges, wrongOnly, studyResults, bookmarkOnly, bookmarkedSet) {
+  filter(query, levelFilter, levelRanges, wrongOnly, studyResults, bookmarkOnly, bookmarkedSet, chunkRange) {
     let chars = allChars;
 
     // 1. Level Filter
@@ -53,6 +60,12 @@ const SearchManager = {
         const [lo, hi] = range;
         chars = chars.filter(c => c.i >= lo && c.i <= hi);
       }
+    }
+
+    // 1b. Practice-chunk range (练习模式 only — see chunkRange doc above)
+    if (chunkRange) {
+      const [clo, chi] = chunkRange;
+      chars = chars.filter(c => c.i >= clo && c.i <= chi);
     }
 
     // 2. Search Query Matching (Exact Char, Pinyin Prefix, Tone-Stripped
