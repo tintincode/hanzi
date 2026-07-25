@@ -465,7 +465,8 @@ const HistoryManager = {
   // Returns true if a session was discarded (caller may want to react).
   discardEmptyActiveSession() {
     if (!this.state.activeSession) return false;
-    if (this.app.state.studyResults.size === 0) {
+    const alreadyTracked = this.state.historyState.sessions.some(s => s.id === this.state.activeSession.id);
+    if (!alreadyTracked && this.app.state.studyResults.size === 0) {
       const id = this.state.activeSession.id;
       this.state.historyState.sessions = this.state.historyState.sessions.filter(s => s.id !== id);
       this.state.activeSession = null;
