@@ -76,17 +76,21 @@ export const Templates = {
   // to omit a header (used when the picker is already scoped to one level,
   // so a redundant per-section label would just repeat what
   // chunk-picker-head already says). Each cell is { chunkAttr, level,
-  // label, meta, status, isWhole } — status is 'not-started' | 'in-progress'
-  // | 'done', computed by the caller from that cell's own persisted
-  // session (if any); `level` is the cell's *real* level (never 'all'),
-  // read back by app.js's click handler so 全部's picker can resolve each
-  // cell to the correct underlying level-scoped session.
+  // label, range, meta, status, isWhole } — range (e.g. "201–300", the
+  // same global character index shown on every card) is only set for
+  // per-chunk 组N cells, omitted for whole-level cells where it wouldn't
+  // add anything; status is 'not-started' | 'in-progress' | 'done',
+  // computed by the caller from that cell's own persisted session (if
+  // any); `level` is the cell's *real* level (never 'all'), read back by
+  // app.js's click handler so 全部's picker can resolve each cell to the
+  // correct underlying level-scoped session.
   chunkPicker(headTitle, headSub, sections) {
     const sectionsHTML = sections.map(sec => `
       ${sec.titleHTML ? `<div class="section-label">${sec.titleHTML}</div>` : ''}
       <div class="chunk-picker-grid">${sec.cells.map(cell => `
-        <button class="chunk-cell chunk-cell--${cell.status}${cell.isWhole ? ' chunk-cell--whole' : ''}" data-chunk="${cell.chunkAttr}" data-level="${cell.level}">
+        <button class="chunk-cell chunk-cell--${cell.status}${cell.isWhole ? ' chunk-cell--whole' : ''}" data-chunk="${cell.chunkAttr}" data-level="${cell.level}" title="${cell.label}${cell.range ? ` · 第${cell.range}字` : ''} · ${cell.meta}">
         <span class="chunk-cell-label">${cell.label}</span>
+          ${cell.range ? `<span class="chunk-cell-range">${cell.range}</span>` : ''}
         <span class="chunk-cell-meta">${cell.meta}</span>
         </button>`).join('')}</div>`).join('');
     return `<div class="chunk-picker">

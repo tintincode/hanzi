@@ -421,10 +421,17 @@ const HanziApp = {
       const session = HistoryManager.getSessionForLevelChunk(level, i);
       const reviewed = session ? Object.keys(session.results || {}).length : 0;
       const status = reviewed === 0 ? 'not-started' : (reviewed >= chunkSize ? 'done' : 'in-progress');
+      // start/end are the same global character index (c.i) printed on
+      // every card's .char-num — showing that here (rather than a
+      // level-local "1-100" position) means it's directly
+      // cross-referenceable with what you actually see in the grid, and
+      // avoids every level's own 组1 confusingly showing the same "1-100"
+      // range in 全部's fanned-out picker.
       cells.push({
         chunkAttr: String(i),
         level,
         label: `组 ${i + 1}`,
+        range: `${start}–${end}`,
         meta: `${reviewed} / ${chunkSize}`,
         status,
         isWhole: false
@@ -515,9 +522,22 @@ const HanziApp = {
   // a stringified chunk index.
   selectChunk(level, chunkAttr) {
     const chunkIndex = chunkAttr === 'whole' ? null : parseInt(chunkAttr, 10);
-    const session = chunkIndex === null
+    let session;
+    if (HistoryManager.state.pendingFreshStart) {
+      // 新练习 was pressed just before this click — always start a
+      // genuinely new session for whatever was picked, even if that exact
+      // chunk/whole-level already has progress (the normal branch below
+      // would otherwise just resume it, silently defeating 新练习). The
+      // old session, if any, stays intact as its own separate entry in
+      // 历史记录 — same as how a fresh 新练习 session always worked before
+      // chunking existed.
+      HistoryManager.state.pendingFreshStart = false;
+      session = HistoryManager.createPracticeSession(level, chunkIndex);
+    } else {
+      session = chunkIndex === null
       ? (HistoryManager.getLatestSessionForLevel(level) || HistoryManager.createPracticeSession(level, null))
       : (HistoryManager.getSessionForLevelChunk(level, chunkIndex) || HistoryManager.createPracticeSession(level, chunkIndex));
+    }
     HistoryManager.activateSession(session);
     this.renderGrid(false);
     HistoryManager.saveActiveSession(true);
@@ -731,7 +751,12 @@ const HanziApp = {
     this.updateScore();
     this.updateUndoUI();
     HistoryManager.state.historyDirty = true;
-    HistoryManager.scheduleHistorySave();
+    // Forced, not debounced — mirrors gradeCard()'s own immediate save.
+    // Undo needs the session object to reflect the reverted state right
+    // away, not 250ms later: anything that reads session.results in the
+    // meantime (there's at least one such read elsewhere) would otherwise
+    // see the stale pre-undo marks and could reintroduce them.
+    HistoryManager.saveActiveSession(true);
     return true;
   },
 
@@ -1164,6 +1189,11 @@ const HanziApp = {
     HistoryManager.state.historyState.practiceMode = on;
     if (!on) {
       HistoryManager.saveActiveSession(true);
+      // Cancel any pending "start fresh on next chunk pick" intent from an
+      // unconsumed 新练习 click — leaving 练习模式 abandons the picker
+      // entirely, so that intent shouldn't silently apply to some later,
+      // unrelated resume.
+      HistoryManager.state.pendingFreshStart = false;
       this.state.practiceActiveId = null;
       this.state.studyResults.clear();
       this.clearCardStates();

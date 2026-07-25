@@ -546,6 +546,7 @@ main {
 }
 .chunk-cell:hover { background: var(--bg); border-color: var(--ink3); }
 .chunk-cell-label { font-size: 0.85rem; font-weight: 600; }
+.chunk-cell-range { font-size: 0.68rem; color: var(--ink3); }
 .chunk-cell-meta { font-size: 0.72rem; color: var(--ink3); }
 
 /* 整个级别 stands apart from the numbered groups — spans the full row and
@@ -564,11 +565,13 @@ main {
   border-color: var(--teal);
   color: var(--teal);
 }
+.chunk-cell--in-progress .chunk-cell-range,
 .chunk-cell--in-progress .chunk-cell-meta { color: var(--teal); opacity: 0.85; }
 .chunk-cell--done {
   background: var(--border);
   color: var(--ink2);
 }
+.chunk-cell--done .chunk-cell-range,
 .chunk-cell--done .chunk-cell-meta { color: var(--ink3); }
 
 .view-btn {

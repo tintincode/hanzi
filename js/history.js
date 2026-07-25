@@ -38,7 +38,18 @@ const HistoryManager = {
     historyState: { version: 1, activeSessionId: null, practiceMode: false, sessions: [] },
     activeSession: null,
     historySaveTimer: null,
-    historyDirty: false
+    historyDirty: false,
+    // Set by startNewPracticeSession() (新练习), consumed by the very next
+    // selectChunk() (app.js) — without this, picking a chunk/level you'd
+    // already made progress on would just *resume* that existing session
+    // (selectChunk's normal, correct behavior for an ordinary picker
+    // click), defeating the entire point of 新练习: picking a chunk right
+    // after it should always start a genuinely new attempt, even if that
+    // exact chunk already has progress. One-shot and in-memory only (not
+    // part of historyState / not persisted) — cleared the moment it's
+    // consumed, and also whenever study mode is left (setStudy(false) in
+    // app.js) so it can never linger into an unrelated later resume.
+    pendingFreshStart: false
   },
 
   app: null,
@@ -469,8 +480,17 @@ const HistoryManager = {
 
   ensurePracticeSession() {
     if (this.state.activeSession && this.state.activeSession.level === this.app.state.currentFilter) {
+      // Already the correct, in-sync session for what's on screen — no
+      // need to reload results from it here. This used to call
+      // loadSessionResults() unconditionally as a "safety net," but that
+      // was actively harmful: it overwrites app.state.studyResults from
+      // this session's last *persisted* results, which can be stale if a
+      // recent action hasn't been force-flushed back into the session
+      // object yet (undoLastMark() only debounces its save — see its own
+      // comment). Calling this on every mark-button click could then
+      // silently revert a just-made undo the moment a second click landed
+      // before that debounce fired.
       this.app.state.practiceChunkIndex = (typeof this.state.activeSession.chunkIndex === 'number') ? this.state.activeSession.chunkIndex : null;
-      this.loadSessionResults(this.state.activeSession);
       return this.state.activeSession;
     }
     const session = this.getLatestSessionForLevel(this.app.state.currentFilter) || this.createPracticeSession(this.app.state.currentFilter);
@@ -565,12 +585,14 @@ const HistoryManager = {
   // relabel/reuse an already-empty active session or create a brand-new
   // whole-level one immediately, both of which mattered a lot more when a
   // session was necessarily the entire (thousands-strong) level. Flushing
-  // to the picker sidesteps that complexity entirely: opening the picker
+  // to the picker sidesteps most of that complexity: opening the picker
   // creates nothing by itself (same "not persisted until first mark"
   // principle as createPracticeSession), so there's no clutter risk from
-  // returning to it.
+  // returning to it. pendingFreshStart handles the one piece that
+  // sidestepping isn't enough for on its own — see its own comment above.
   startNewPracticeSession() {
     this.discardEmptyActiveSession();
+    this.state.pendingFreshStart = true;
     this.app.openChunkPicker(this.app.state.currentFilter);
   }
 };
