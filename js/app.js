@@ -489,26 +489,21 @@ const HanziApp = {
 
     const groupSize = this.constants.PRACTICE_GROUP_SIZE;
     let headTitle, headSub, sections;
-    if (level === 'all') {
-      headTitle = '全部 · 选择练习组';
-      headSub = `每组 ${groupSize} 字 — 选择整级练习，或按级别挑选练习组`;
-      // 全部/整个一级/整个二级/整个三级 together as one grouped row, rather
-      // than each 整个X级 buried inside its own level's section — this is
-      // what the person asked for directly.
-      const wholeRow = {
-        titleHTML: '整级练习',
-        cells: ['all', '1', '2', '3'].map(lvl => this.buildWholeCell(lvl, false))
-      };
-      const levelSections = ['1', '2', '3'].map(lvl => ({
-        titleHTML: Templates.sectionLabel(lvl),
-        cells: this.buildChunkCells(lvl)
-      }));
-      sections = [wholeRow, ...levelSections];
-    } else {
-      headTitle = `${HistoryManager.levelName(level)} · 选择练习组`;
-      headSub = `每组 ${groupSize} 字，点击继续上次进度或开始新的一组`;
-      sections = [this.buildChunkSection(level, false)];
-    }
+    headTitle = '选择练习组';
+    headSub = `选择整级练习，或按级别挑选练习组，每组 ${groupSize} 字`;
+    // 全部/整个一级/整个二级/整个三级 together as one grouped row, rather
+    // than each 整个X级 buried inside its own level's section — this is
+    // what the person asked for directly.
+    const wholeRow = {
+      titleHTML: '整级练习',
+      cells: ['all', '1', '2', '3'].map(lvl => this.buildWholeCell(lvl, false))
+    };
+    const levelSections = ['1', '2', '3'].map(lvl => ({
+      titleHTML: Templates.sectionLabel(lvl),
+      cells: this.buildChunkCells(lvl)
+    }));
+    sections = [wholeRow, ...levelSections];
+
 
     this.dom.gridContainer.innerHTML = Templates.chunkPicker(headTitle, headSub, sections);
     window.scrollTo({ top: 0 });
