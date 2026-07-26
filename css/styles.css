@@ -190,22 +190,7 @@ header {
   gap: 0.4rem;
   flex-wrap: wrap;
 }
-.filter-btn {
-  padding: 0.4rem 0.9rem;
-  border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.25);
-  background: transparent;
-  color: rgba(255,255,255,0.7);
-  font-size: 0.8rem;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.15s;
-  white-space: nowrap;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-.filter-btn:hover { background: rgba(255,255,255,0.1); color: var(--on-dark); }
-.filter-btn.active { background: var(--header-accent); color: var(--fixed-dark); border-color: var(--header-accent); }
+
 
 .header-tools {
   display: flex;
@@ -784,8 +769,9 @@ body.study-mode .reading-bar { display: none; }
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  flex-wrap: wrap;
+  flex-wrap: wrap;  
 }
+
 .reading-label {
   font-size: 0.78rem;
   font-weight: 600;
@@ -798,7 +784,9 @@ body.study-mode .reading-bar { display: none; }
   color: var(--ink3);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  min-width: 80px; /* Reserve enough width for numbers like "8,105 / 8,105" */
 }
+
 
 /* Back-to-top — lightweight scroll shortcut, distinct from the site-title
    "go home" action: this never touches filters/search/mode, it only
@@ -893,6 +881,24 @@ body.study-mode .reading-bar { display: none; }
 
 .wrong-filter-btn { --pill-accent: var(--danger); }
 .wrong-filter-btn .pill-count { background: var(--danger-bg-alt); color: var(--danger); }
+
+/* Level selector (阅读模式 only — see index.html/app.js's getFiltered()
+   comment for why 练习模式 has no selector of its own; the chunk picker
+   always shows every level's options instead, see openChunkPicker).
+   Sits near the start of .reading-bar-inner, alongside 只看收藏/清空收藏,
+   so its buttons use the same .pill-btn base class for a consistent
+   look; this just adds the level-specific numeral alignment and the
+   "currently selected" fill — a single shared --accent rather than
+   --pill-accent, since all four buttons here are one mutually-exclusive
+   selection, not independent toggles each with their own accent. */
+.filter-btn {
+  font-variant-numeric: tabular-nums;
+}
+.filter-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-dark);
+}
 
 /* Bookmark filter toggle (阅读模式's 只看收藏) — built on the same .pill-btn
    base as 只看错题, just with accent/gold coloring instead of danger red,

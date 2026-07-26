@@ -57,12 +57,6 @@
         </svg>
         <input type="search" id="search" placeholder="搜索汉字或拼音…" autocomplete="off" spellcheck="false">
       </div>
-      <div class="filter-btns" id="filter-level-group">
-        <button class="filter-btn active" data-level="all">全部 8105</button>
-        <button class="filter-btn" data-level="1">一级 3500</button>
-        <button class="filter-btn" data-level="2">二级 3000</button>
-        <button class="filter-btn" data-level="3">三级 1605</button>
-      </div>
     </div>
     <div class="header-tools">
       <div class="filter-btns">
@@ -126,6 +120,12 @@
   <div class="reading-bar-inner">
     <span class="reading-label">阅读进度</span>
     <span class="reading-progress-count" id="reading-progress-count">– / –</span>
+    <div class="filter-btns" id="filter-level-group">
+      <button class="filter-btn pill-btn active" data-level="all">全部 8105</button>
+      <button class="filter-btn pill-btn" data-level="1">一级 3500</button>
+      <button class="filter-btn pill-btn" data-level="2">二级 3000</button>
+      <button class="filter-btn pill-btn" data-level="3">三级 1605</button>
+    </div>
     <button class="bookmark-filter-btn pill-btn" id="bookmark-filter-btn" title="只看收藏" aria-pressed="false">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       <span class="bookmark-filter-label pill-btn-label">只看收藏</span>

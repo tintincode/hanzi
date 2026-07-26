@@ -150,31 +150,14 @@ const HanziApp = {
       document.querySelectorAll('.filter-btn[data-level]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
 
-      // Flush/discard whatever was active *before* reassigning currentFilter
-      // below — saveActiveSession() stamps a flushed session with
-      // app.state.currentFilter, so this has to run while that still
-      // reflects the level being left, not the one being switched to
-      // (openChunkPicker() below also calls this, but by then it'd be too
-      // late — currentFilter would already point at the new level).
-      if (this.state.isStudyMode) {
-        HistoryManager.discardEmptyActiveSession();
-      }
-
+      // Level selection is 阅读模式-only (the selector lives in
+      // .reading-bar, hidden during 练习模式 — see index.html) — this
+      // handler can only ever fire while browsing, so it's just a plain
+      // grid re-render, with none of the practice-session bookkeeping
+      // this used to need back when the same buttons also drove which
+      // level's chunk picker to show.
       this.state.currentFilter = btn.dataset.level;
-      this.state.practiceActiveId = null;
-      // Undo is scoped to "marks made in the currently-viewed level" —
-      // without this, a pending undo could reach back across a level
-      // switch to a character no longer in view at all. Clears the whole
-      // stack, not just the top entry, since any entry in it could
-      // reference the level being left.
-      this.state.markHistory = [];
-      this.updateUndoUI();
-
-      if (this.state.isStudyMode) {
-        this.openChunkPicker(this.state.currentFilter);
-        } else {
         this.renderGrid(true);
-        }
     });
 
     this.dom.gridContainer.addEventListener('click', (e) => {
@@ -365,6 +348,13 @@ const HanziApp = {
   getFiltered() {
     return SearchManager.filter(
       this.state.currentSearch,
+      // currentFilter serves two different purposes depending on mode:
+      // in 阅读模式 it's directly set by the level selector (see
+      // index.html — it lives in .reading-bar, 练习模式 has no selector
+      // of its own); in 练习模式 it's set by activateSession() to
+      // whichever session is currently active, so the grid stays scoped
+      // to that session's level/chunk regardless of whatever 阅读模式
+      // last left it on.
       this.state.currentFilter,
       this.constants.LEVEL_RANGES,
       this.state.wrongOnly,
@@ -440,31 +430,17 @@ const HanziApp = {
     return cells;
   },
 
-  // One level's full picker section: its own whole-level cell (full width)
-  // followed by its 组1…组N cells. Used for a single-level picker (see
-  // openChunkPicker below) — 全部's picker builds its per-level sections
-  // without a whole-level cell instead, since those live together in a
-  // dedicated grouped row up top (buildWholeCell is called separately for
-  // each of 全部/整个一级/整个二级/整个三级 there). This is what keeps
-  // progress consistent between "组3 opened via 一级'的 own tab" and "组3
-  // opened via 全部'的 fanned-out view": both paths build the exact same
-  // cell for the exact same underlying session, since neither path ever
-  // invents a separate level:'all' chunk session space.
-  buildChunkSection(level, includeTitle) {
-    return {
-      titleHTML: includeTitle ? Templates.sectionLabel(level) : null,
-      cells: [this.buildWholeCell(level, true), ...this.buildChunkCells(level)]
-    };
-  },
-
-  // Shows the chunk-selection grid for `level` in place of the character
-  // grid, instead of jumping straight into a (potentially thousands-long)
-  // whole-level practice session. Called whenever 练习模式 is entered or
-  // switched to a level with no already-active resumable session (see
-  // setStudy()/the filterLevelGroup click handler) — an explicit resume
-  // (app boot, history-panel pick, or just toggling modes without
-  // switching level) bypasses this entirely and goes straight to the grid.
-  openChunkPicker(level) {
+  // Shows the chunk-selection grid in place of the character grid, instead
+  // of jumping straight into a (potentially thousands-long) whole-level
+  // practice session. Always shows every level's options — 全部/整个一级/
+  // 整个二级/整个三级 in one grouped row, followed by each level's own
+  // 组1…组N — since 练习模式 has no level selector of its own anymore
+  // (level selection is 阅读模式-only; see index.html/getFiltered()'s
+  // comment). Called whenever 练习模式 is entered with no already-active
+  // session (see setStudy()) — an explicit resume (app boot, history-panel
+  // pick, or just toggling modes with a session still active) bypasses
+  // this entirely and goes straight to the grid.
+  openChunkPicker() {
     // Safety-net flush/discard for callers that haven't already done this
     // themselves (setStudy, startNewPracticeSession, deleteSession's
     // fallback all reach here without having flushed first). The
@@ -488,12 +464,10 @@ const HanziApp = {
     this.updateUndoUI();
 
     const groupSize = this.constants.PRACTICE_GROUP_SIZE;
-    let headTitle, headSub, sections;
-    headTitle = '选择练习组';
-    headSub = `选择整级练习，或按级别挑选练习组，每组 ${groupSize} 字`;
+    const headTitle = '选择练习组';
+    const headSub = `选择整级练习，或按级别挑选练习组，每组 ${groupSize} 字`;
     // 全部/整个一级/整个二级/整个三级 together as one grouped row, rather
-    // than each 整个X级 buried inside its own level's section — this is
-    // what the person asked for directly.
+    // than each 整个X级 buried inside its own level's section.
     const wholeRow = {
       titleHTML: '整级练习',
       cells: ['all', '1', '2', '3'].map(lvl => this.buildWholeCell(lvl, false))
@@ -502,8 +476,7 @@ const HanziApp = {
       titleHTML: Templates.sectionLabel(lvl),
       cells: this.buildChunkCells(lvl)
     }));
-    sections = [wholeRow, ...levelSections];
-
+    const sections = [wholeRow, ...levelSections];
 
     this.dom.gridContainer.innerHTML = Templates.chunkPicker(headTitle, headSub, sections);
     window.scrollTo({ top: 0 });
@@ -938,7 +911,20 @@ const HanziApp = {
     if (!this.state.visibleChars.length || !this.state.practiceActiveId) return;
     const currentIdx = this.state.visibleChars.findIndex(c => c.i === this.state.practiceActiveId);
     const nextId = this.getNextUnmarkedId(currentIdx + 1);
-    if (!nextId) return;
+    if (!nextId) {
+      // Nothing left unmarked — clear the active pointer instead of
+      // leaving it stuck on the card that was just graded. Without this,
+      // that last card keeps its .active class forever (nothing ever
+      // moves it elsewhere), which combined with .active.correct/
+      // .active.wrong's CSS rule (buttons stay visible for the current
+      // graded card, meant to be a brief window before advancing to the
+      // next one) means its 对/错 buttons stay permanently visible
+      // instead of going back to hover-only like every other completed
+      // card. The 🎉 completion toast is the intended "you're done"
+      // signal — not a stuck-open button pair on one specific card.
+      this.setPracticeActive(null);
+      return;
+    }
     const card = this.ensureCardRendered(nextId);
     this.setPracticeActive(nextId);
     if (card) card.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -1199,13 +1185,26 @@ const HanziApp = {
       // no bookmark stars at all despite bookmarks still being intact.
       this.renderGrid(false);
     } else {
-      if (HistoryManager.hasResumableSessionForLevel(this.state.currentFilter)) {
+      // Resume directly if a session is already active (regardless of
+      // level — 阅读模式's own level filter may have changed currentFilter
+      // since this session was paused; ensurePracticeSession() resyncs it
+      // from the session itself). Otherwise there's nothing to resume, so
+      // show the picker.
+      if (HistoryManager.state.activeSession) {
       HistoryManager.ensurePracticeSession();
+        // setStudy(false) clears studyResults/markHistory/practiceActiveId
+        // on the way out (see below), and ensurePracticeSession()'s fast
+        // path deliberately doesn't repopulate them (removing that reload
+        // fixed a different bug — see its own comment) — so this resume
+        // path needs to restore them explicitly, or every card in the
+        // session would render as unmarked despite the underlying data
+        // being intact in HistoryManager.state.activeSession.results.
+        HistoryManager.loadSessionResults(HistoryManager.state.activeSession);
       this.renderGrid(false);
       HistoryManager.saveActiveSession(true);
       this.scrollToPracticeCard(this.state.practiceActiveId);
       } else {
-        this.openChunkPicker(this.state.currentFilter);
+        this.openChunkPicker();
       }
     }
     HistoryManager.saveHistoryState();

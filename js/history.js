@@ -304,15 +304,6 @@ const HistoryManager = {
       .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0] || null;
   },
 
-  // True when the currently-active session already covers `level` (whole or
-  // chunked, doesn't matter which) — used to decide whether entering/
-  // switching to this level in 练习模式 can resume directly, or needs to
-  // show the chunk picker first (see app.js's setStudy()/filterLevelGroup
-  // handler).
-  hasResumableSessionForLevel(level) {
-    return !!(this.state.activeSession && this.state.activeSession.level === level);
-  },
-
   activateSession(session) {
     if (!session) return;
     this.state.activeSession = session;
@@ -480,21 +471,36 @@ const HistoryManager = {
   },
 
   ensurePracticeSession() {
-    if (this.state.activeSession && this.state.activeSession.level === this.app.state.currentFilter) {
-      // Already the correct, in-sync session for what's on screen — no
-      // need to reload results from it here. This used to call
-      // loadSessionResults() unconditionally as a "safety net," but that
-      // was actively harmful: it overwrites app.state.studyResults from
-      // this session's last *persisted* results, which can be stale if a
-      // recent action hasn't been force-flushed back into the session
-      // object yet (undoLastMark() only debounces its save — see its own
-      // comment). Calling this on every mark-button click could then
-      // silently revert a just-made undo the moment a second click landed
-      // before that debounce fired.
+    if (this.state.activeSession) {
+      // Already have an active session — resync currentFilter/
+      // practiceChunkIndex from it rather than requiring them to already
+      // match. Level selection is 阅读模式-only now (see index.html/
+      // app.js's filterLevelGroup handler), so currentFilter can freely
+      // drift away from whatever level this session belongs to while it
+      // sits paused in the background (e.g. browsing in 阅读模式, then
+      // switching back into 练习模式) — this is what makes that resume
+      // land on the right level/chunk regardless.
+      //
+      // Deliberately doesn't call loadSessionResults() here — that used
+      // to run unconditionally as a "safety net," but that was actively
+      // harmful: it overwrites app.state.studyResults from this session's
+      // last *persisted* results, which can be stale if a recent action
+      // hasn't been force-flushed back into the session object yet
+      // (undoLastMark() only debounces its save — see its own comment).
+      // Calling this on every mark-button click could then silently
+      // revert a just-made undo the moment a second click landed before
+      // that debounce fired.
+      this.app.state.currentFilter = this.state.activeSession.level || 'all';
       this.app.state.practiceChunkIndex = (typeof this.state.activeSession.chunkIndex === 'number') ? this.state.activeSession.chunkIndex : null;
       return this.state.activeSession;
     }
-    const session = this.getLatestSessionForLevel(this.app.state.currentFilter) || this.createPracticeSession(this.app.state.currentFilter);
+    // No active session at all. Practice mode no longer has its own level
+    // selector (the chunk picker always shows every level — see app.js's
+    // openChunkPicker), so there's no meaningful "desired level" to fall
+    // back to here beyond a sensible default; this branch is effectively
+    // unreachable via the UI (setStudy(true) always shows the picker when
+    // there's no active session), kept only as a defensive fallback.
+    const session = this.createPracticeSession('all');
     this.activateSession(session);
     return session;
   },
@@ -549,7 +555,7 @@ const HistoryManager = {
             // Nothing left to resume for this level — back to the chunk
             // picker rather than silently starting a brand-new whole-level
             // session on the user's behalf.
-            this.app.openChunkPicker(this.app.state.currentFilter);
+            this.app.openChunkPicker();
           } else {
             this.app.state.studyResults.clear();
             this.app.state.practiceActiveId = null;
@@ -594,7 +600,7 @@ const HistoryManager = {
   startNewPracticeSession() {
     this.discardEmptyActiveSession();
     this.state.pendingFreshStart = true;
-    this.app.openChunkPicker(this.app.state.currentFilter);
+    this.app.openChunkPicker();
   }
 };
 
