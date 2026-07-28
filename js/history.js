@@ -49,7 +49,13 @@ const HistoryManager = {
     // part of historyState / not persisted) — cleared the moment it's
     // consumed, and also whenever study mode is left (setStudy(false) in
     // app.js) so it can never linger into an unrelated later resume.
-    pendingFreshStart: false
+    pendingFreshStart: false,
+    // Bulk-delete "select mode" (选择 toggle in the history panel) — both
+    // in-memory only, reset whenever the panel closes (see
+    // closeHistoryPanel) so reopening it later never starts back in select
+    // mode from last time.
+    historySelectMode: false,
+    selectedSessionIds: new Set()
   },
 
   app: null,
@@ -403,16 +409,25 @@ const HistoryManager = {
     this.app.dom.historyPanel.classList.remove('open');
     document.removeEventListener('keydown', this.handleHistoryPanelKeydown);
     this.app.closeFocusTrap();
+    this.state.historySelectMode = false;
+    this.state.selectedSessionIds.clear();
   },
 
   handleHistoryPanelKeydown(e) {
-    if (e.key === 'Escape') HistoryManager.closeHistoryPanel();
+    if (e.key !== 'Escape') return;
+    if (HistoryManager.state.historySelectMode) {
+      HistoryManager.toggleSelectMode();
+      return;
+    }
+    HistoryManager.closeHistoryPanel();
   },
 
   renderHistoryPanelList() {
     const sessions = [...this.state.historyState.sessions].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    this.app.dom.historyPanelList.classList.toggle('select-mode', this.state.historySelectMode);
     if (sessions.length === 0) {
       this.app.dom.historyPanelList.innerHTML = Templates.emptyHistory();
+      this.updateHistorySelectToolbar();
       return;
     }
     const iconEdit = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
@@ -423,29 +438,149 @@ const HistoryManager = {
         ? `${Math.round((session.correct || 0) / ((session.correct || 0) + (session.wrong || 0)) * 100)}%`
         : '—';
       const isActive = session.id === this.state.historyState.activeSessionId;
+      const isSelected = this.state.selectedSessionIds.has(session.id);
       const isChunked = typeof session.chunkIndex === 'number';
       const total = isChunked ? this.chunkTotal(session.level, session.chunkIndex) : this.levelTotal(session.level);
       const isComplete = total > 0 && reviewed >= total;
       const defaultTitle = isChunked ? `${this.levelName(session.level)} 组${session.chunkIndex + 1}` : this.levelName(session.level);
       const title = session.label || defaultTitle;
       const meta = `${reviewed}/${total} 字 · 正确率 ${accuracy} · 对${session.correct || 0} / 错${session.wrong || 0}`;
-      return Templates.historyCard(session, isActive, isComplete, title, meta, iconEdit, iconDelete, escapeHtml);
+      return Templates.historyCard(session, isActive, isComplete, isSelected, title, meta, iconEdit, iconDelete, escapeHtml);
     }).join('');
 
     this.app.dom.historyPanelList.querySelectorAll('.history-card').forEach(card => {
       card.addEventListener('click', (e) => {
         if (e.target.closest('.history-rename-btn') || e.target.closest('.history-delete-btn')) return;
+        // In select mode the whole card is one big tap target for
+        // toggling selection (not just the small checkbox) — same
+        // "generous tap target" reasoning already applied throughout this
+        // app's touch-target handling. Opening/resuming a session only
+        // happens outside select mode.
+        if (this.state.historySelectMode) {
+          this.toggleSessionSelected(card.dataset.sessionId);
+          return;
+        }
         this.selectHistorySession(card.dataset.sessionId);
       });
       card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.selectHistorySession(card.dataset.sessionId); }
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        if (this.state.historySelectMode) {
+          this.toggleSessionSelected(card.dataset.sessionId);
+        } else {
+          this.selectHistorySession(card.dataset.sessionId);
+        }
       });
+    });
+    this.app.dom.historyPanelList.querySelectorAll('.history-card-check').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); this.toggleSessionSelected(btn.dataset.sessionId); });
     });
     this.app.dom.historyPanelList.querySelectorAll('.history-rename-btn').forEach(btn => {
       btn.addEventListener('click', (e) => { e.stopPropagation(); this.renameSession(btn.dataset.sessionId); });
     });
     this.app.dom.historyPanelList.querySelectorAll('.history-delete-btn').forEach(btn => {
       btn.addEventListener('click', (e) => { e.stopPropagation(); this.deleteSession(btn.dataset.sessionId); });
+    });
+    this.updateHistorySelectToolbar();
+  },
+
+  // 选择/取消 toggle button (history-select-toggle-btn).
+  toggleSelectMode() {
+    this.state.historySelectMode = !this.state.historySelectMode;
+    if (!this.state.historySelectMode) this.state.selectedSessionIds.clear();
+    this.renderHistoryPanelList();
+  },
+
+  toggleSessionSelected(id) {
+    if (this.state.selectedSessionIds.has(id)) {
+      this.state.selectedSessionIds.delete(id);
+    } else {
+      this.state.selectedSessionIds.add(id);
+    }
+    // Only this one card's checkbox state actually changed — update it
+    // directly rather than re-rendering the whole list, so selecting
+    // several items in a row doesn't rebuild/reflow the entire panel each
+    // time.
+    const card = this.app.dom.historyPanelList.querySelector(`.history-card[data-session-id="${id}"]`);
+    if (card) {
+      const isSelected = this.state.selectedSessionIds.has(id);
+      card.querySelector('.history-card-check').setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    }
+    this.updateHistorySelectToolbar();
+  },
+
+  // 全选/取消全选 toggle (history-select-all-btn) — selects every currently
+  // listed session, or clears the selection entirely if everything is
+  // already selected.
+  toggleSelectAllSessions() {
+    const allIds = this.state.historyState.sessions.map(s => s.id);
+    const allSelected = allIds.length > 0 && allIds.every(id => this.state.selectedSessionIds.has(id));
+    if (allSelected) {
+      this.state.selectedSessionIds.clear();
+    } else {
+      this.state.selectedSessionIds = new Set(allIds);
+    }
+    this.renderHistoryPanelList();
+  },
+
+  // Keeps the select-mode toggle button's label, the toolbar's
+  // visibility/count, and the bulk-delete button's disabled state all in
+  // sync with historySelectMode/selectedSessionIds — called after every
+  // render and every selection change rather than duplicating this logic
+  // at each call site.
+  updateHistorySelectToolbar() {
+    const on = this.state.historySelectMode;
+    this.app.dom.historySelectToggleBtn.textContent = on ? '取消' : '选择';
+    this.app.dom.historySelectToolbar.hidden = !on;
+    if (!on) return;
+    const count = this.state.selectedSessionIds.size;
+    this.app.dom.historySelectCount.textContent = `已选择 ${count} 项`;
+    this.app.dom.historyBulkDeleteBtn.disabled = count === 0;
+    const allIds = this.state.historyState.sessions.map(s => s.id);
+    const allSelected = allIds.length > 0 && allIds.every(id => this.state.selectedSessionIds.has(id));
+    this.app.dom.historySelectAllBtn.textContent = allSelected ? '取消全选' : '全选';
+  },
+
+  // Delete-bin icon in the select-mode toolbar.
+  bulkDeleteSelected() {
+    const ids = new Set(this.state.selectedSessionIds);
+    if (ids.size === 0) return;
+    this.app.openMiniModal({
+      title: '删除记录',
+      text: `确定要删除这 ${ids.size} 条记录吗？删除后将无法恢复。`,
+      confirmLabel: '删除',
+      danger: true,
+      onConfirm: () => {
+        const deletedActiveSession = this.state.activeSession && ids.has(this.state.activeSession.id);
+        const deletedLevel = deletedActiveSession ? this.state.activeSession.level : null;
+        this.state.historyState.sessions = this.state.historyState.sessions.filter(s => !ids.has(s.id));
+        this.state.selectedSessionIds.clear();
+        this.state.historySelectMode = false;
+
+        if (deletedActiveSession) {
+          // Same fallback reasoning as the single-session deleteSession()
+          // below — prefer another session for the same level over a
+          // stale reference to one that no longer exists.
+          this.state.activeSession = null;
+          this.state.historyState.activeSessionId = null;
+          const inStudyMode = this.app.state.isStudyMode;
+          const fallback = this.getLatestSessionForLevelAnyChunk(deletedLevel) || this.state.historyState.sessions[0] || null;
+          if (fallback) {
+            this.activateSession(fallback);
+            this.app.renderGrid(true);
+          } else if (inStudyMode) {
+            this.app.openChunkPicker();
+          } else {
+            this.app.state.studyResults.clear();
+            this.app.state.practiceActiveId = null;
+            this.updateHistorySelect();
+            this.app.renderGrid(true);
+          }
+        }
+
+        this.saveHistoryState();
+        if (this.app.dom.historyPanel.classList.contains('open')) this.renderHistoryPanelList();
+      }
     });
   },
 

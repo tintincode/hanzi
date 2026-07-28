@@ -112,6 +112,11 @@ const HanziApp = {
       historyExportBtn: document.getElementById('history-export-btn'),
       historyImportBtn: document.getElementById('history-import-btn'),
       historyImportInput: document.getElementById('history-import-input'),
+      historySelectToggleBtn: document.getElementById('history-select-toggle-btn'),
+      historySelectToolbar: document.getElementById('history-select-toolbar'),
+      historySelectAllBtn: document.getElementById('history-select-all-btn'),
+      historySelectCount: document.getElementById('history-select-count'),
+      historyBulkDeleteBtn: document.getElementById('history-bulk-delete-btn'),
       scoreResetBtn: document.getElementById('score-reset-btn'),
       practiceCompleteToast: document.getElementById('practice-complete-toast'),
       undoBarBtn: document.getElementById('undo-bar-btn'),
@@ -251,6 +256,9 @@ const HanziApp = {
       if (file) HistoryManager.importHistoryFromFile(file);
       e.target.value = ''; // allow re-selecting the same file next time
     });
+    this.dom.historySelectToggleBtn.addEventListener('click', () => HistoryManager.toggleSelectMode());
+    this.dom.historySelectAllBtn.addEventListener('click', () => HistoryManager.toggleSelectAllSessions());
+    this.dom.historyBulkDeleteBtn.addEventListener('click', () => HistoryManager.bulkDeleteSelected());
     this.dom.scoreResetBtn.addEventListener('click', () => HistoryManager.startNewPracticeSession());
     this.dom.siteTitleBtn.addEventListener('click', () => this.goHome());
 

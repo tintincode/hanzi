@@ -145,7 +145,7 @@
   <div class="history-panel">
     <div class="history-panel-head">
       <h3>历史记录</h3>
-      <div class="history-panel-actions">
+      <div class="history-panel-actions" id="history-panel-actions">
         <button class="history-io-btn" id="history-export-btn" title="导出备份（JSON 文件）">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           导出
@@ -155,9 +155,17 @@
           导入
         </button>
         <input type="file" id="history-import-input" accept="application/json,.json" style="display:none;">
+        <button class="history-io-btn" id="history-select-toggle-btn">选择</button>
       </div>
       <button class="history-panel-close" id="history-panel-close" aria-label="关闭">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="history-select-toolbar" id="history-select-toolbar" hidden>
+      <button class="history-io-btn history-select-all-btn" id="history-select-all-btn">全选</button>
+      <span class="history-select-count" id="history-select-count">已选择 0 项</span>
+      <button class="history-bulk-delete-btn" id="history-bulk-delete-btn" disabled title="删除所选" aria-label="删除所选记录">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       </button>
     </div>
     <div class="history-panel-list" id="history-panel-list"></div>

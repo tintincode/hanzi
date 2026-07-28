@@ -49,9 +49,12 @@ export const Templates = {
     return `<div class="empty"><div class="empty-char">？</div><p>没有找到匹配的汉字</p></div>`;
   },
 
-  historyCard(session, isActive, isComplete, title, meta, iconEdit, iconDelete, escapeFn) {
+  historyCard(session, isActive, isComplete, isSelected, title, meta, iconEdit, iconDelete, escapeFn) {
     return `
       <div class="history-card${isActive ? ' active' : ''}" data-session-id="${session.id}" role="button" tabindex="0">
+        <button class="history-card-check" data-session-id="${session.id}" aria-label="选择此记录" aria-pressed="${isSelected ? 'true' : 'false'}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
         <div class="history-card-main">
           <span class="history-card-title">${escapeFn(title)}</span>
           <span class="history-card-meta">${meta}</span>

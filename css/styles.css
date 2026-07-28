@@ -1005,6 +1005,66 @@ body.study-mode .reading-bar { display: none; }
   white-space: nowrap;
 }
 .history-io-btn:hover { background: var(--bg); color: var(--ink); }
+
+/* Bulk-select mode (选择/取消 toggle + 全选/删除 toolbar) — 全选 reuses
+   .history-io-btn directly (see index.html) rather than duplicating its
+   style here. */
+.history-select-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.history-select-toolbar[hidden] { display: none; }
+.history-select-count {
+  font-size: 0.78rem;
+  color: var(--ink3);
+  flex: 1;
+}
+.history-bulk-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--danger);
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.history-bulk-delete-btn:hover:not(:disabled) { background: var(--danger-bg); border-color: var(--danger); }
+.history-bulk-delete-btn:disabled { opacity: 0.35; cursor: not-allowed; color: var(--ink3); }
+
+/* Per-card selection checkbox — present in the markup always (see
+   templates.js), only ever visible while .history-panel-list carries
+   .select-mode, which simultaneously hides the rename/delete buttons so
+   the two affordances never compete for the same tap target. */
+.history-panel-list.select-mode .history-card-check { display: inline-flex; }
+.history-panel-list.select-mode .history-card-actions { display: none; }
+.history-card-check {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: transparent;
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.history-card-check[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-dark);
+}
+
 .history-panel-head h3 {
   font-family: "Noto Serif SC", serif;
   font-size: 1.02rem;
