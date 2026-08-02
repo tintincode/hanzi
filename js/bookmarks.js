@@ -8,27 +8,42 @@
 //
 // One flat, global set — not scoped per level — since a bookmark reflects
 // personal interest in a specific character, not something tied to
-// whichever level tab happened to be open at the time.
+// whichever level tab happened to be open at the time. It IS scoped per
+// profile, though (see setProfile below) — one learner's bookmarks
+// shouldn't show up for another learner sharing the same device.
 //
 // Scope note: 阅读模式 only, by design (not 练习模式). In 练习模式, marking
 // a card 错 already serves the "flag this for review" need via 只看错题 —
 // a second, overlapping affordance there would just be confusing. The
 // gap this actually fills is browsing without a grading signal at all.
 
-const STORAGE_KEY = 'hanziStudyBookmarks.v1';
+const STORAGE_KEY_BASE = 'hanziStudyBookmarks.v1';
 
 let bookmarked = new Set();
+let profileId = null;
 
 const BookmarkManager = {
-  init() {
+  // Sets which profile's bookmarks this module reads/writes (one key per
+  // profile: hanziStudyBookmarks.v1.<id>) and immediately (re)loads that
+  // profile's set into memory — this is the single entry point used both
+  // for the initial app load (see app.js's init(), called after
+  // ProfileManager has resolved the active profile) and for every
+  // subsequent profile switch, rather than having a separate no-arg
+  // init() that only worked for the first case.
+  setProfile(id) {
+    profileId = id;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(this.key());
       const arr = raw ? JSON.parse(raw) : [];
       bookmarked = new Set(Array.isArray(arr) ? arr.filter(n => Number.isInteger(n)) : []);
     } catch (e) {
       console.warn('BookmarkManager: failed to load bookmarks, starting empty.', e);
       bookmarked = new Set();
     }
+  },
+
+  key() {
+    return profileId ? `${STORAGE_KEY_BASE}.${profileId}` : STORAGE_KEY_BASE;
   },
 
   isBookmarked(id) {
@@ -48,7 +63,7 @@ const BookmarkManager = {
 
   save() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...bookmarked]));
+      localStorage.setItem(this.key(), JSON.stringify([...bookmarked]));
     } catch (e) {
       // localStorage unavailable — bookmark still applies for this
       // session, just won't persist across reloads.

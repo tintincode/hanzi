@@ -67,6 +67,25 @@ export const Templates = {
       </div>`;
   },
 
+  // canDelete is false only when this is the last remaining profile —
+  // deleting it would leave the app with zero profiles, which
+  // ProfileManager.deleteProfile() refuses anyway, but omitting the
+  // button entirely here avoids offering an action that would just
+  // silently do nothing.
+  profileCard(profile, isActive, canDelete, iconEdit, iconDelete, escapeFn) {
+    return `
+      <div class="profile-card${isActive ? ' active' : ''}" data-profile-id="${profile.id}" role="button" tabindex="0">
+        <div class="profile-card-main">
+          <span class="profile-card-title">${escapeFn(profile.name)}</span>
+          ${isActive ? '<span class="profile-card-badge">当前</span>' : ''}
+        </div>
+        <div class="profile-card-actions">
+          <button class="profile-rename-btn" data-profile-id="${profile.id}" title="重命名" aria-label="重命名资料">${iconEdit}</button>
+          ${canDelete ? `<button class="profile-delete-btn" data-profile-id="${profile.id}" title="删除" aria-label="删除资料">${iconDelete}</button>` : ''}
+        </div>
+      </div>`;
+  },
+
   emptyHistory() {
     return '<div class="history-panel-empty">暂无练习记录<br>开始练习模式后会自动保存进度</div>';
   },

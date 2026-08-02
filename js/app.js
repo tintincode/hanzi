@@ -6,6 +6,7 @@ import { SearchManager } from './search.js';
 import { Templates } from './templates.js';
 import { BookmarkManager } from './bookmarks.js';
 import { ThemeManager } from './theme.js';
+import { ProfileManager } from './profiles.js';
 
 const HanziApp = {
   constants: {
@@ -61,11 +62,19 @@ const HanziApp = {
     // J/K grading session, especially in the "全部" (8,105-char) view.
     this.cardEls = new Map();
     SpeechManager.init(this.allChars);
+    // Must run before HistoryManager.init() below — it resolves (or
+    // migrates/creates) the active profile and points StorageManager/
+    // BookmarkManager at it, and both of those read through
+    // profile-scoped keys from here on. Also handles a first-run
+    // migration of any pre-profile-system data into a starter profile,
+    // so shipping this feature doesn't silently orphan anyone's existing
+    // history/bookmarks.
+    ProfileManager.init(this);
     HistoryManager.init(this);
     SearchManager.init(this.allChars);
-    BookmarkManager.init();
     this.cacheDOM();
     ThemeManager.init(this);
+    ProfileManager.updateProfileButtonLabel();
     this.bindEvents();
     this.setupInfiniteScroll();
     this.updateBookmarkFilterUI();
@@ -118,6 +127,12 @@ const HanziApp = {
       historySelectAllBtn: document.getElementById('history-select-all-btn'),
       historySelectCount: document.getElementById('history-select-count'),
       historyBulkDeleteBtn: document.getElementById('history-bulk-delete-btn'),
+      profileBtn: document.getElementById('profile-btn'),
+      profileBtnName: document.getElementById('profile-btn-name'),
+      profilePanel: document.getElementById('profile-panel'),
+      profilePanelList: document.getElementById('profile-panel-list'),
+      profilePanelClose: document.getElementById('profile-panel-close'),
+      profileAddBtn: document.getElementById('profile-add-btn'),
       scoreResetBtn: document.getElementById('score-reset-btn'),
       practiceCompleteToast: document.getElementById('practice-complete-toast'),
       undoBarBtn: document.getElementById('undo-bar-btn'),
@@ -260,6 +275,10 @@ const HanziApp = {
     this.dom.historySelectToggleBtn.addEventListener('click', () => HistoryManager.toggleSelectMode());
     this.dom.historySelectAllBtn.addEventListener('click', () => HistoryManager.toggleSelectAllSessions());
     this.dom.historyBulkDeleteBtn.addEventListener('click', () => HistoryManager.bulkDeleteSelected());
+    this.dom.profileBtn.addEventListener('click', () => ProfileManager.openProfilePanel());
+    this.dom.profilePanelClose.addEventListener('click', () => ProfileManager.closeProfilePanel());
+    this.dom.profilePanel.addEventListener('click', (e) => { if (e.target === this.dom.profilePanel) ProfileManager.closeProfilePanel(); });
+    this.dom.profileAddBtn.addEventListener('click', () => ProfileManager.createProfileFlow());
     this.dom.scoreResetBtn.addEventListener('click', () => HistoryManager.startNewPracticeSession());
     this.dom.siteTitleBtn.addEventListener('click', () => this.goHome());
 
@@ -1288,6 +1307,54 @@ const HanziApp = {
       btn.classList.toggle('active', btn.dataset.level === 'all');
     });
     this.state.currentFilter = 'all';
+    this.renderGrid(true);
+  },
+
+  // Called by ProfileManager.switchProfile() once it has already flushed
+  // whatever the outgoing profile was doing and re-pointed StorageManager/
+  // BookmarkManager at the new one. Resets everything else as if the app
+  // had just loaded fresh under this profile — new profile, new history,
+  // new bookmarks, nothing carried over from whoever was using the device
+  // a moment ago.
+  resetForProfileSwitch() {
+    // Unconditionally drop back to 阅读模式 — the new profile's practice
+    // sessions (if any) have nothing to do with whatever was active a
+    // moment ago, so there's nothing meaningful to "stay in practice
+    // mode" for. setStudy(false) also flushes via saveActiveSession(true),
+    // which is a harmless no-op here since switchProfile() already did
+    // the flush that actually mattered, while app.state still belonged
+    // to the outgoing profile.
+    if (this.state.isStudyMode) this.setStudy(false);
+
+    this.state.currentFilter = 'all';
+    this.state.currentSearch = '';
+    this.dom.search.value = '';
+    this.state.wrongOnly = false;
+    this.state.bookmarkOnly = false;
+    this.dom.wrongFilterBtn.setAttribute('aria-pressed', 'false');
+    this.dom.bookmarkFilterBtn.setAttribute('aria-pressed', 'false');
+    this.state.studyResults.clear();
+    this.state.markHistory = [];
+    this.state.practiceActiveId = null;
+    this.state.practiceChunkIndex = null;
+
+    // Reload history for the newly-active profile (StorageManager is
+    // already pointed at it by this point) and reset HistoryManager's own
+    // in-memory pointers — this profile has no "currently active session"
+    // in this page-load's memory yet, and its history panel, if it
+    // happened to be mid-selection, shouldn't carry that over either.
+    HistoryManager.loadHistoryState();
+    HistoryManager.state.activeSession = null;
+    HistoryManager.state.historySelectMode = false;
+    HistoryManager.state.selectedSessionIds.clear();
+
+    document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.level === 'all');
+    });
+
+    ProfileManager.updateProfileButtonLabel();
+    this.updateBookmarkFilterUI();
+    HistoryManager.updateHistorySelect();
     this.renderGrid(true);
   },
 

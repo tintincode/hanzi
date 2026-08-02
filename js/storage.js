@@ -2,13 +2,35 @@
 // StorageManager: handles all interactions with localStorage, history state structure,
 // data migration (versioning), and history session pruning.
 
-const HISTORY_KEY = 'hanziStudyHistory.v1';
+const HISTORY_KEY_BASE = 'hanziStudyHistory.v1';
 const MAX_HISTORY_SESSIONS = 30;
 
+// Which profile's data load()/save() currently read and write — set once by
+// ProfileManager during startup (see profiles.js), before HistoryManager
+// ever calls load(). Module-private for the same "don't let external code
+// silently swap this out mid-operation" reasoning used elsewhere in this
+// app (SpeechManager/SearchManager's private state).
+let profileId = null;
+
 export const StorageManager = {
+  // Every profile's history lives under its own key
+  // (hanziStudyHistory.v1.<id>), so switching profiles never mixes one
+  // learner's sessions with another's. Falls back to the legacy
+  // unprefixed key if this is never called (profileId stays null) —
+  // defensive: if ProfileManager somehow fails to initialize, the app
+  // still reads/writes *something* consistent rather than silently
+  // pointing at a key nothing else uses.
+  setProfile(id) {
+    profileId = id;
+  },
+
+  key() {
+    return profileId ? `${HISTORY_KEY_BASE}.${profileId}` : HISTORY_KEY_BASE;
+  },
+
   load() {
     try {
-      const raw = localStorage.getItem(HISTORY_KEY);
+      const raw = localStorage.getItem(this.key());
       if (!raw) return this.defaultState();
       const parsed = JSON.parse(raw);
       if (parsed && parsed.version === 1 && Array.isArray(parsed.sessions)) {
@@ -33,7 +55,7 @@ export const StorageManager = {
   save(historyState) {
     try {
       this.trim(historyState);
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(historyState));
+      localStorage.setItem(this.key(), JSON.stringify(historyState));
       return true;
     } catch (e) {
       console.error("StorageManager: Failed to save history state.", e);

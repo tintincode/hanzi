@@ -1198,6 +1198,151 @@ body.study-mode .reading-bar { display: none; }
 }
 .history-card-actions button:hover { background: var(--surface); color: var(--ink); }
 .history-card.active .history-card-actions button:hover { background: rgba(255,255,255,0.6); }
+
+/* Profile panel — deliberately mirrors the history panel's backdrop/
+   panel/head/close/card/actions structure closely (same z-index tier,
+   same card layout, same active-state teal border+fill) rather than
+   inventing a new "list panel" visual pattern for what's conceptually
+   the same kind of UI: a modal list of items you can switch between,
+   rename, or delete. */
+.profile-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  z-index: 330;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.profile-backdrop.open { display: flex; }
+.profile-panel {
+  background: var(--surface);
+  border-radius: 16px;
+  width: min(360px, 94vw);
+  max-height: min(480px, 84vh);
+  box-shadow: 0 20px 60px var(--shadow-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.profile-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.profile-panel-head h3 {
+  font-family: "Noto Serif SC", serif;
+  font-size: 1.02rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+}
+.profile-panel-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--ink3);
+  cursor: pointer;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.profile-panel-close:hover { background: var(--bg); color: var(--ink); }
+.profile-panel-list {
+  overflow-y: auto;
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.profile-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.65rem 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  background: var(--surface);
+  text-align: left;
+}
+.profile-card:hover { background: var(--bg); }
+.profile-card.active {
+  border: 2px solid var(--teal);
+  padding: 0.6rem 0.75rem;
+  background: var(--teal-light);
+}
+.profile-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.profile-card-title {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-card-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  background: var(--teal);
+  color: var(--on-dark);
+}
+.profile-card-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.profile-card-actions button {
+  border: none;
+  background: none;
+  color: var(--ink3);
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+.profile-card-actions button:hover { background: var(--surface); color: var(--ink); }
+.profile-card.active .profile-card-actions button:hover { background: rgba(255,255,255,0.6); }
+.profile-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0 0.7rem 0.7rem;
+  padding: 0.6rem;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: none;
+  color: var(--ink2);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.profile-add-btn:hover { background: var(--bg); border-color: var(--ink3); color: var(--ink); }
+
 .study-score {
   display: flex;
   align-items: center;
@@ -1221,6 +1366,30 @@ body.compact .char-card { padding: 0.65rem 0.5rem; contain-intrinsic-size: auto 
 body.compact .card-result-btns { height: 20px; gap: 3px; }
 body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; }
 
+
+.profile-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.35rem 0.8rem;
+  border-radius: 20px;
+  border: 1px solid var(--chrome-border);
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.profile-btn:hover { background: var(--chrome-fill); color: var(--on-dark); }
+.profile-btn svg { flex-shrink: 0; }
+#profile-btn-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .help-btn {
   display: inline-flex;
