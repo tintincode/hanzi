@@ -573,13 +573,15 @@ const HistoryManager = {
           } else {
             this.app.state.studyResults.clear();
             this.app.state.practiceActiveId = null;
-            this.updateHistorySelect();
             this.app.renderGrid(true);
           }
         }
 
         this.saveHistoryState();
-        if (this.app.dom.historyPanel.classList.contains('open')) this.renderHistoryPanelList();
+        // See deleteSession()'s matching comment above — always refresh
+        // the header's session-count badge, not just when the active
+        // session happened to be among those deleted.
+        this.updateHistorySelect();
       }
     });
   },
@@ -653,7 +655,6 @@ const HistoryManager = {
         session.label = value;
         this.saveHistoryState();
         this.updateHistorySelect();
-        if (this.app.dom.historyPanel.classList.contains('open')) this.renderHistoryPanelList();
       }
     });
   },
@@ -694,13 +695,20 @@ const HistoryManager = {
           } else {
             this.app.state.studyResults.clear();
             this.app.state.practiceActiveId = null;
-            this.updateHistorySelect();
             this.app.renderGrid(true);
           }
         }
 
         this.saveHistoryState();
-        if (this.app.dom.historyPanel.classList.contains('open')) this.renderHistoryPanelList();
+        // Always refresh the header's session-count badge — not just when
+        // the deleted session happened to be the active one (previously
+        // this was only called from inside that branch above, so deleting
+        // any *other* session left the badge showing a stale, too-high
+        // count until something unrelated happened to refresh it).
+        // updateHistorySelect() already re-renders the panel list itself
+        // if it's open, so the explicit check that used to live here is
+        // redundant now.
+        this.updateHistorySelect();
       }
     });
   },

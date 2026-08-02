@@ -94,6 +94,7 @@ const HanziApp = {
       practiceProgressFill: document.getElementById('practice-progress-fill'),
       practiceProgressCount: document.getElementById('practice-progress-count'),
       readingProgressCount: document.getElementById('reading-progress-count'),
+      readingProgressFill: document.getElementById('reading-progress-fill'),
       backToTopBtn: document.getElementById('back-to-top-btn'),
       themeToggleBtn: document.getElementById('theme-toggle-btn'),
       scoreCorrect: document.getElementById('score-correct'),
@@ -379,25 +380,30 @@ const HanziApp = {
   // A single "practice the whole thing" cell for `level` — 'all' means all
   // 8105 characters as one session (level:'all', chunkIndex:null, same as
   // how 练习模式 worked before chunking existed); a real level means that
-  // level's own whole-level session. fullWidth controls whether this cell
-  // spans its whole grid row (used when it's the lone whole-cell in a
-  // single-level picker) or sits compactly alongside siblings (used in the
-  // grouped 全部/整个一级/整个二级/整个三级 row — see openChunkPicker below).
-  buildWholeCell(level, fullWidth) {
+  // level's own whole-level session. Sits compactly alongside its siblings
+  // in the grouped 全部/整个一级/整个二级/整个三级 row — see openChunkPicker
+  // below.
+  // Shared by buildWholeCell/buildChunkCells below — both were computing
+  // this identical formula inline, differing only in the local variable
+  // name for "total" (levelTotal vs chunkSize).
+  cellStatus(reviewed, total) {
+    if (reviewed === 0) return 'not-started';
+    return reviewed >= total ? 'done' : 'in-progress';
+  },
+
+  buildWholeCell(level) {
     const levelTotal = level === 'all'
       ? this.allChars.length
       : (this.constants.LEVEL_RANGES[level][1] - this.constants.LEVEL_RANGES[level][0] + 1);
     const levelName = HistoryManager.levelName(level);
     const session = HistoryManager.getLatestSessionForLevel(level);
     const reviewed = session ? Object.keys(session.results || {}).length : 0;
-    const status = reviewed === 0 ? 'not-started' : (reviewed >= levelTotal ? 'done' : 'in-progress');
     return {
       chunkAttr: 'whole',
       level,
       label: level === 'all' ? '全部' : `整个${levelName}`,
       meta: `${reviewed} / ${levelTotal}`,
-      status,
-      isWhole: fullWidth
+      status: this.cellStatus(reviewed, levelTotal)
     };
   },
 
@@ -418,7 +424,6 @@ const HanziApp = {
       const chunkSize = end - start + 1;
       const session = HistoryManager.getSessionForLevelChunk(level, i);
       const reviewed = session ? Object.keys(session.results || {}).length : 0;
-      const status = reviewed === 0 ? 'not-started' : (reviewed >= chunkSize ? 'done' : 'in-progress');
       // start/end are the same global character index (c.i) printed on
       // every card's .char-num — showing that here (rather than a
       // level-local "1-100" position) means it's directly
@@ -431,8 +436,7 @@ const HanziApp = {
         label: `组 ${i + 1}`,
         range: `${start}–${end}`,
         meta: `${reviewed} / ${chunkSize}`,
-        status,
-        isWhole: false
+        status: this.cellStatus(reviewed, chunkSize)
       });
     }
     return cells;
@@ -478,7 +482,7 @@ const HanziApp = {
     // than each 整个X级 buried inside its own level's section.
     const wholeRow = {
       titleHTML: '整级练习',
-      cells: ['all', '1', '2', '3'].map(lvl => this.buildWholeCell(lvl, false))
+      cells: ['all', '1', '2', '3'].map(lvl => this.buildWholeCell(lvl))
     };
     const levelSections = ['1', '2', '3'].map(lvl => ({
       titleHTML: Templates.sectionLabel(lvl),
@@ -1148,6 +1152,7 @@ const HanziApp = {
     const total = this.state.visibleChars.length;
     if (total === 0) {
       this.dom.readingProgressCount.textContent = '– / –';
+      this.dom.readingProgressFill.style.width = '0%';
       return;
     }
 
@@ -1161,13 +1166,21 @@ const HanziApp = {
       if (card.getBoundingClientRect().bottom > threshold) { topCard = card; break; }
     }
     if (!topCard) topCard = cards[cards.length - 1] || null;
-    if (!topCard) { this.dom.readingProgressCount.textContent = '– / –'; return; }
+    if (!topCard) {
+      this.dom.readingProgressCount.textContent = '– / –';
+      this.dom.readingProgressFill.style.width = '0%';
+      return;
+    }
 
     const id = parseInt(topCard.dataset.id, 10);
     const idx = this.state.visibleChars.findIndex(c => c.i === id);
-    this.dom.readingProgressCount.textContent = idx === -1
-      ? '– / –'
-      : `${(idx + 1).toLocaleString()} / ${total.toLocaleString()}`;
+    if (idx === -1) {
+      this.dom.readingProgressCount.textContent = '– / –';
+      this.dom.readingProgressFill.style.width = '0%';
+      return;
+    }
+    this.dom.readingProgressCount.textContent = `${(idx + 1).toLocaleString()} / ${total.toLocaleString()}`;
+    this.dom.readingProgressFill.style.width = `${Math.round(((idx + 1) / total) * 100)}%`;
   },
 
   setStudy(on) {

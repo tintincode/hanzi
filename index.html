@@ -111,20 +111,26 @@
       <span class="history-label pill-btn-label">历史记录</span>
       <span class="history-count pill-count" id="history-count">0</span>
     </button>
-    <button class="score-reset" id="score-reset-btn">新练习</button>
+    <button class="score-reset pill-btn" id="score-reset-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span class="score-reset-label pill-btn-label">新练习</span>
+    </button>
   </div>
 </div>
 <div class="practice-complete-toast" id="practice-complete-toast">🎉 本组已全部完成！</div>
 
 <div class="reading-bar" aria-label="阅读进度">
   <div class="reading-bar-inner">
+    <div class="reading-progress-wrap">
     <span class="reading-label">阅读进度</span>
-    <span class="reading-progress-count" id="reading-progress-count">– / –</span>
+      <div class="reading-progress-track"><div class="reading-progress-fill" id="reading-progress-fill"></div></div>
+      <span class="reading-progress-count" id="reading-progress-count" aria-live="polite" aria-atomic="true">– / –</span>
+    </div>
     <div class="filter-btns" id="filter-level-group">
-      <button class="filter-btn pill-btn active" data-level="all">全部 8105</button>
-      <button class="filter-btn pill-btn" data-level="1">一级 3500</button>
-      <button class="filter-btn pill-btn" data-level="2">二级 3000</button>
-      <button class="filter-btn pill-btn" data-level="3">三级 1605</button>
+      <button class="filter-btn pill-btn active" data-level="all">全部 <span class="filter-btn-count">8105</span></button>
+      <button class="filter-btn pill-btn" data-level="1">一级 <span class="filter-btn-count">3500</span></button>
+      <button class="filter-btn pill-btn" data-level="2">二级 <span class="filter-btn-count">3000</span></button>
+      <button class="filter-btn pill-btn" data-level="3">三级 <span class="filter-btn-count">1605</span></button>
     </div>
     <button class="bookmark-filter-btn pill-btn" id="bookmark-filter-btn" title="只看收藏" aria-pressed="false">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>

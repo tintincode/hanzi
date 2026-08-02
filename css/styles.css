@@ -31,7 +31,7 @@
   --accent: #e8a020;              /* saturated gold — focus ring, "speaking" state */
   --accent-bg-alt: #fdf3e0;       /* bookmark-count pill background (pale gold, mirrors --danger-bg-alt) */
   --accent-rgb: 232,160,32;       /* same as --accent, as r,g,b for use inside rgba() */
-  --header-accent: #e8d5a3;       /* pale gold — header-only accents (site-title span, active level pill) */
+  --header-accent: #e8d5a3;       /* pale gold — header-only accent (site-title span only; the level pill moved to --accent when the selector relocated to .reading-bar) */
   --on-dark: #fff;                /* text/icon color on any dark or saturated-color surface */
   --ink-hover: #333;              /* hover-lighten shade for dark ("primary") buttons */
   --overlay: rgba(26,23,20,0.55); /* modal/panel backdrop scrim */
@@ -46,6 +46,19 @@
      chrome background" from "primary text color that flips with theme". */
   --fixed-dark: #1a1714;
   --bar-bg: rgba(255,255,255,0.94); /* 阅读进度/练习进度 bar background — flips in dark mode */
+  /* Shared "white on dark chrome" tokens for the header's own controls
+     (#search, .view-btn, .help-btn, .theme-toggle-btn) — previously each
+     hand-rolled its own rgba(255,255,255,X) border/fill values with no
+     clear reasoning for why e.g. border opacity was 0.2 in two of them
+     and 0.25 in the other two. Consolidated to the midpoint rather than
+     picking one existing value over the other. Text-opacity differences
+     between these controls (0.6 vs 0.7) are left as-is — plausibly
+     intentional (view-btn is part of a toggle-group where the active
+     member already carries the contrast; help-btn/theme-toggle-btn are
+     standalone) rather than an oversight, so not flattened here. */
+  --chrome-border: rgba(255,255,255,0.22);
+  --chrome-fill: rgba(255,255,255,0.1);
+  --chrome-fill-active: rgba(255,255,255,0.15);
 }
 
 /* Dark theme. Applied via [data-theme="dark"] on <html>, set by JS at
@@ -111,7 +124,7 @@ input:focus-visible,
 header {
   background: var(--fixed-dark);
   color: var(--on-dark);
-  padding: 2rem 2rem 1.5rem;
+  padding: 1.15rem 2rem;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -167,9 +180,9 @@ header {
 #search {
   width: 100%;
   padding: 0.5rem 0.75rem 0.5rem 2.2rem;
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 1px solid var(--chrome-border);
   border-radius: 8px;
-  background: rgba(255,255,255,0.1);
+  background: var(--chrome-fill);
   color: var(--on-dark);
   font-size: 0.9rem;
   font-family: inherit;
@@ -177,7 +190,7 @@ header {
   transition: border-color 0.2s, background 0.2s;
 }
 #search::placeholder { color: rgba(255,255,255,0.4); }
-#search:focus { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.15); }
+#search:focus { border-color: rgba(255,255,255,0.5); background: var(--chrome-fill-active); }
 /* #search's own `outline: none` above has higher specificity (ID) than
    the shared `input:focus-visible` rule near the top of this file, so
    that shared ring never reaches this input — restore it explicitly here
@@ -443,11 +456,11 @@ main {
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
+.speak-btn { margin-bottom: 1.25rem; }
 .replay-btn:hover,
 .speak-btn:hover { background: var(--bg); border-color: var(--ink3); color: var(--ink); }
 .replay-btn:active,
 .speak-btn:active { transform: scale(0.97); }
-.speak-btn { margin-bottom: 1.25rem; }
 .speak-btn.speaking { background: var(--teal-light); border-color: var(--teal); color: var(--teal); }
 .fc-nav {
   display: flex;
@@ -539,17 +552,6 @@ main {
 .chunk-cell-range { font-size: 0.68rem; color: var(--ink3); }
 .chunk-cell-meta { font-size: 0.72rem; color: var(--ink3); }
 
-/* 整个级别 stands apart from the numbered groups — spans the full row and
-   sits visually first, since it's a different kind of choice (commit to
-   the whole level) rather than one more group among equals. */
-.chunk-cell--whole {
-  grid-column: 1 / -1;
-  flex-direction: row;
-  justify-content: space-between;
-  padding: 0.9rem 1rem;
-}
-.chunk-cell--whole .chunk-cell-label { font-size: 0.9rem; }
-
 .chunk-cell--in-progress {
   background: var(--teal-light);
   border-color: var(--teal);
@@ -567,15 +569,15 @@ main {
 .view-btn {
   padding: 0.35rem 0.7rem;
   border-radius: 6px;
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 1px solid var(--chrome-border);
   background: transparent;
   color: rgba(255,255,255,0.6);
   cursor: pointer;
   font-size: 0.8rem;
   font-family: inherit;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
-.view-btn.active { background: rgba(255,255,255,0.15); color: var(--on-dark); }
+.view-btn.active { background: var(--chrome-fill-active); color: var(--on-dark); }
 
 /* Study mode (hide pinyin) */
 body.study-mode .char-pinyin { visibility: hidden; }
@@ -670,7 +672,9 @@ body.study-mode .char-card.active.wrong .card-result-btns {
   display: inline;
 }
 
-/* Score counter in header */
+/* Practice bar (练习模式) — sticky sub-bar below the main header: level-
+   agnostic progress/score, plus the undo/wrong-filter/history/新练习
+   action row. */
 .practice-bar {
   display: none;
   position: sticky;
@@ -768,16 +772,46 @@ body.study-mode .reading-bar { display: none; }
   min-height: var(--bar-min-height);
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.6rem;
   flex-wrap: wrap;  
 }
 
+/* Mirrors .practice-progress-wrap/.practice-label/.practice-progress-track/
+   .practice-progress-fill exactly — same margin-right:auto "first group
+   pushes everything else right" mechanism, so the two bars are actually
+   unified now rather than achieving a similar-looking result via two
+   different techniques (this used to rely on .bookmark-filter-btn's own
+   margin-left:auto instead; removed below now that this wrap's
+   margin-right:auto already does that job from the other side). */
+.reading-progress-wrap {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
 .reading-label {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--ink2);
   letter-spacing: 0.04em;
   white-space: nowrap;
+}
+.reading-progress-track {
+  width: 110px;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.reading-progress-fill {
+  height: 100%;
+  background: var(--teal);
+  border-radius: 4px;
+  width: 0%;
+  transition: width 0.25s ease;
 }
 .reading-progress-count {
   font-size: 0.74rem;
@@ -819,9 +853,6 @@ body.study-mode .reading-bar { display: none; }
   transform: translateY(0);
 }
 .back-to-top:hover { opacity: 1; }
-@media (max-width: 600px) {
-  .back-to-top { right: 1rem; bottom: 1rem; width: 38px; height: 38px; }
-}
 /* Shared "pill" action-button pattern used by the four bar buttons below
    (只看错题 / 只看收藏 / 历史记录 / 撤销) — same size, border, background,
    hover/disabled states, and icon+label+count layout in all four, so the
@@ -894,6 +925,12 @@ body.study-mode .reading-bar { display: none; }
 .filter-btn {
   font-variant-numeric: tabular-nums;
 }
+.filter-btn-count {
+  opacity: 0.7;
+}
+.filter-btn.active .filter-btn-count {
+  opacity: 0.85;
+}
 .filter-btn.active {
   background: var(--accent);
   border-color: var(--accent);
@@ -906,13 +943,6 @@ body.study-mode .reading-bar { display: none; }
    one-off. */
 .bookmark-filter-btn {
   --pill-accent: var(--accent);
-  /* Pushes the button to the right side of .reading-bar-inner, matching
-     where 只看错题 sits in .practice-bar-inner (via
-     .practice-progress-wrap's margin-right:auto) — the two bars swap in
-     and out of the exact same screen position when toggling modes, so
-     the filter toggle jumping from one side to the other was the
-     inconsistency being fixed here. */
-  margin-left: auto;
 }
 .bookmark-filter-btn .pill-count { background: var(--accent-bg-alt); color: var(--accent); }
 
@@ -1178,19 +1208,11 @@ body.study-mode .reading-bar { display: none; }
 .score-correct { color: var(--success-text); }
 .score-wrong   { color: var(--danger-text); }
 .score-accuracy { color: var(--ink3); font-size: 0.76rem; font-weight: 500; }
-.score-reset {
-  font-size: 0.72rem;
-  color: var(--ink3);
-  cursor: pointer;
-  background: none;
-  border: none;
-  font-family: inherit;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.score-reset:hover { color: var(--ink2); }
-
+/* 新练习 — plain .pill-btn now (see index.html), no color/behavior of its
+   own needed: unlike 只看错题/只看收藏 it's not a toggle (no aria-pressed,
+   no --pill-accent), and unlike undo/wrong-filter/history it has no count
+   badge, just an icon + label. Used to be a bare underlined text link,
+   visually inconsistent with the three pill buttons it sits next to. */
 /* Compact view */
 body.compact .char-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 0.6rem; }
 body.compact .char-glyph { font-size: 2.2rem; }
@@ -1206,16 +1228,16 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   gap: 5px;
   padding: 0.35rem 0.8rem;
   border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.25);
+  border: 1px solid var(--chrome-border);
   background: transparent;
   color: rgba(255,255,255,0.7);
   font-family: inherit;
   font-size: 0.8rem;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
-.help-btn:hover { background: rgba(255,255,255,0.1); color: var(--on-dark); }
+.help-btn:hover { background: var(--chrome-fill); color: var(--on-dark); }
 
 .header-actions {
   display: flex;
@@ -1229,14 +1251,14 @@ body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; 
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.25);
+  border: 1px solid var(--chrome-border);
   background: transparent;
   color: rgba(255,255,255,0.7);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
 }
-.theme-toggle-btn:hover { background: rgba(255,255,255,0.1); color: var(--on-dark); }
+.theme-toggle-btn:hover { background: var(--chrome-fill); color: var(--on-dark); }
 /* Icon shows the CURRENT mode (not "what tapping switches to", unlike the
    old 2-state version — that convention doesn't scale cleanly to a 3-way
    light/dark/auto cycle, since you'd need to remember the cycle order to
@@ -1435,15 +1457,17 @@ html[data-theme-mode="auto"] .theme-icon-auto { display: inline-flex; }
 @media (max-width: 600px) {
   .header-inner { gap: 1rem; }
   .site-title { font-size: 1.1rem; }
-  header { padding: 1.25rem 1rem 1rem; }
+  header { padding: 1rem 1rem 0.9rem; }
   main { padding: 1rem 0.75rem 3rem; }
   .char-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.6rem; }
   .practice-bar-inner { padding: 0.5rem 0.75rem; }
   .reading-bar-inner { padding: 0.5rem 0.75rem; }
   .pill-btn { padding: 0 0.45rem; }
   .pill-btn-label { display: none; }
+  .filter-btn-count { display: none; }
   .history-panel { width: min(420px, 96vw); }
   .key-hint { display: none; }
+  .back-to-top { right: 1rem; bottom: 1rem; width: 38px; height: 38px; }
 }
 /* Touch-target overrides — bumps grading/nav/action buttons to a real
    touch target on devices without real hover. Scoped to (hover: none)
