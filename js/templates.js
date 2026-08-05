@@ -11,6 +11,19 @@ export const Templates = {
       ? `<div class="char-pinyin multi multi-pinyins">${pinyins.map(p => `<span>${p}</span>`).join('')}</div>`
       : `<div class="char-pinyin">${pinyins[0] || ''}</div>`;
     
+    // Deliberately NOT gated by the same reveal/hover/.correct/.wrong
+    // visibility rules that hide .char-pinyin in 练习模式 (see
+    // `body.study-mode .char-pinyin { visibility: hidden; }` in
+    // styles.css) — this badge needs to be visible *before* you reveal
+    // the answer, since its whole purpose is telling you to try recalling
+    // more than one reading while you're still guessing, not just
+    // explaining what you already revealed. It doesn't say which
+    // readings, only that there's more than one — otherwise it'd be
+    // giving away part of the answer.
+    const multiBadgeHTML = isMulti
+      ? `<span class="char-multi-badge" title="多音字 · 共 ${pinyins.length} 种读音">音 ${pinyins.length}</span>`
+      : '';
+    
     // Bookmark is 阅读模式-only by design (see bookmarks.js header comment
     // for why) — simply not rendered at all in study mode, rather than
     // rendered-but-hidden, to avoid any risk of stray interaction there.
@@ -22,7 +35,10 @@ export const Templates = {
 
     return `<div class="char-card${resultClass}${activeClass}" data-id="${c.i}">
       ${bookmarkHTML}
+      <div class="char-top-row">
+        ${multiBadgeHTML}
       <div class="char-num">${c.i}</div>
+      </div>
       <div class="char-glyph" title="点击朗读">${c.c}</div>
       ${pyHTML}
       <div class="card-result-btns">

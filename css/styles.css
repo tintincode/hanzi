@@ -311,12 +311,32 @@ main {
   border-color: var(--teal);
   box-shadow: 0 0 0 2px var(--teal-light), 0 6px 20px var(--shadow-soft);
 }
+.char-top-row {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .char-num {
   font-size: 0.7rem;
   color: var(--ink3);
   font-weight: 400;
-  align-self: flex-end;
   line-height: 1;
+}
+/* Polyphonic-character flag (多音字) — see Templates.card()'s comment on
+   why this is deliberately never gated by the same reveal/hover rules
+   that hide .char-pinyin in 练习模式. Reuses the bookmark accent's color
+   pair rather than introducing a new badge color, since both are the
+   same "notable, but not urgent" visual weight. */
+.char-multi-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: var(--accent-bg-alt);
+  color: var(--accent);
+  line-height: 1.4;
+  white-space: nowrap;
 }
 .char-glyph {
   font-family: 'Noto Serif SC', serif;
