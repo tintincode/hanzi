@@ -1345,8 +1345,11 @@ const HanziApp = {
     // happened to be mid-selection, shouldn't carry that over either.
     HistoryManager.loadHistoryState();
     HistoryManager.state.activeSession = null;
+    HistoryManager.state.historyDirty = false;
     HistoryManager.state.historySelectMode = false;
     HistoryManager.state.selectedSessionIds.clear();
+    HistoryManager.state.pendingFreshStart = false;
+    HistoryManager.state.historyState.practiceMode = false;
 
     document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.level === 'all');

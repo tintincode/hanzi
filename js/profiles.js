@@ -205,18 +205,19 @@ const ProfileManager = {
   // app.state still genuinely belongs to it, before anything below
   // changes out from under it — then re-points storage and asks HanziApp
   // to reset/re-render as if freshly loaded under the new profile.
+  // This needs to happen even outside study mode, because a profile switch
+  // should never silently drop the previous profile's pending session data.
   switchProfile(id) {
     if (id === this.state.activeProfileId) return;
     const profile = this.state.profiles.find(p => p.id === id);
     if (!profile) return;
 
-    if (this.app.state.isStudyMode) {
-      HistoryManager.saveActiveSession(true);
-    }
+    HistoryManager.saveActiveSession(true);
 
     this.state.activeProfileId = id;
     this.save();
     this.activateProfile(id);
+    HistoryManager.loadHistoryState();
     this.app.resetForProfileSwitch();
     this.closeProfilePanel();
   },
