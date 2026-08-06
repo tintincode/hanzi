@@ -881,7 +881,19 @@ const HanziApp = {
   syncPracticeSelection() {
     if (!this.state.isStudyMode) return;
     if (!this.state.visibleChars.some(c => c.i === this.state.practiceActiveId)) {
-      this.state.practiceActiveId = this.getNextUnmarkedId(0) || (this.state.visibleChars[0] && this.state.visibleChars[0].i) || null;
+      // getNextUnmarkedId(0) already returns null when nothing in the
+      // current view is unmarked — i.e. practice is genuinely complete
+      // for whatever's visible right now. That case should resolve to
+      // null here too, same as advancePracticeCard()'s handling of
+      // finishing the last card (see its comment) — not fall back to
+      // highlighting visibleChars[0] regardless of whether it's actually
+      // unmarked. That fallback used to make the first card's 对/错
+      // buttons get stuck permanently visible any time a full re-render
+      // (entering 练习模式 on an already-finished set, switching filters
+      // after finishing, resuming a completed session) ran while
+      // practiceActiveId was null/stale, even though nothing was left to
+      // answer.
+      this.state.practiceActiveId = this.getNextUnmarkedId(0);
     }
     this.applyPracticeActive();
   },
@@ -1043,6 +1055,12 @@ const HanziApp = {
     confirmBtn.className = danger ? 'mini-btn-danger' : 'mini-btn-primary';
 
     const cleanup = () => {
+      // Explicitly blur the input before hiding the dialog — on mobile,
+      // confirming via the Enter/Go key can otherwise leave the on-screen
+      // keyboard open after the dialog's 'open' class is removed, which
+      // visually crowds/obscures the page in a way that can look like the
+      // dialog never actually closed.
+      if (withInput) inputEl.blur();
       backdrop.classList.remove('open');
       confirmBtn.removeEventListener('click', handleConfirm);
       cancelBtn.removeEventListener('click', handleCancel);
