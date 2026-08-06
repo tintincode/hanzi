@@ -1060,7 +1060,20 @@ const HanziApp = {
     function handleBackdropClick(e) { if (e.target === backdrop) cleanup(); }
     function handleKeydown(e) {
       if (e.key === 'Escape') cleanup();
-      if (e.key === 'Enter' && withInput) handleConfirm();
+      if (e.key === 'Enter' && withInput) {
+        // Ignore the Enter that just commits an IME composition (e.g.
+        // confirming a Chinese pinyin candidate while typing a profile
+        // name) — that Enter isn't the user asking to submit the dialog,
+        // and firing handleConfirm() on it can submit before the
+        // composed text has even landed in inputEl.value.
+        if (e.isComposing || e.keyCode === 229) return;
+        // preventDefault in case inputEl lives inside a <form> — without
+        // this, the browser's own native form-submit behavior can fire
+        // alongside handleConfirm() and interfere with (or undo) the
+        // close this triggers.
+        e.preventDefault();
+        handleConfirm();
+      }
     }
 
     confirmBtn.addEventListener('click', handleConfirm);
@@ -1320,11 +1333,33 @@ const HanziApp = {
     // Unconditionally drop back to 阅读模式 — the new profile's practice
     // sessions (if any) have nothing to do with whatever was active a
     // moment ago, so there's nothing meaningful to "stay in practice
-    // mode" for. setStudy(false) also flushes via saveActiveSession(true),
-    // which is a harmless no-op here since switchProfile() already did
-    // the flush that actually mattered, while app.state still belonged
-    // to the outgoing profile.
-    if (this.state.isStudyMode) this.setStudy(false);
+    // mode" for.
+    //
+    // Deliberately does NOT call setStudy(false) here, even though that's
+    // the normal way to leave 练习模式 elsewhere in the app. setStudy(false)
+    // ends with an unconditional HistoryManager.saveHistoryState() call
+    // (no dirty-check, no active-session check) — and by this point
+    // StorageManager has *already* been repointed at the new profile's
+    // key (ProfileManager.switchProfile() calls activateProfile(id)
+    // before this method runs), while HistoryManager.state.historyState
+    // in memory is still the OUTGOING profile's full session list
+    // (loadHistoryState() for the new profile hasn't run yet — see
+    // below). Calling setStudy(false) here would silently write the
+    // outgoing profile's sessions into the incoming profile's storage
+    // key, which loadHistoryState() would then immediately read back —
+    // contaminating the new profile with the old one's history. The
+    // flush that actually matters already happened correctly in
+    // switchProfile(), via HistoryManager.saveActiveSession(true), while
+    // StorageManager still pointed at the outgoing profile — so all
+    // that's left to do here is reset the study-mode UI/state by hand.
+    if (this.state.isStudyMode) {
+      document.body.classList.remove('study-mode');
+      this.state.isStudyMode = false;
+      this.dom.btnNormal.classList.add('active');
+      this.dom.btnStudy.classList.remove('active');
+      HistoryManager.state.pendingFreshStart = false;
+      this.clearCardStates();
+    }
 
     this.state.currentFilter = 'all';
     this.state.currentSearch = '';
@@ -1345,11 +1380,8 @@ const HanziApp = {
     // happened to be mid-selection, shouldn't carry that over either.
     HistoryManager.loadHistoryState();
     HistoryManager.state.activeSession = null;
-    HistoryManager.state.historyDirty = false;
     HistoryManager.state.historySelectMode = false;
     HistoryManager.state.selectedSessionIds.clear();
-    HistoryManager.state.pendingFreshStart = false;
-    HistoryManager.state.historyState.practiceMode = false;
 
     document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.level === 'all');
