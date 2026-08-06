@@ -256,7 +256,7 @@ main {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1rem 0.6rem 0.85rem;
+  padding: 0.5rem 0.6rem 0.85rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -274,10 +274,22 @@ main {
    already claimed by .char-num (which uses align-self:flex-end to sit
    there), so placing this on the same corner caused it to overlap the
    character number. Inset slightly rather than flush against the
-   corner, so char-card's overflow:hidden doesn't clip it. */
+   corner, so char-card's overflow:hidden doesn't clip it.
+
+   `top` is deliberately set to match .char-card's own padding-top
+   (0.85rem) rather than an independently hand-picked value — that's what
+   makes this box's top edge land flush with .char-top-row's top edge
+   (the row is the first flex child of .char-card's column layout, so it
+   naturally starts right at the padding edge too). Combined with
+   .char-top-row's matching min-height below, both boxes end up the same
+   height starting at the same y — so each one centering its own content
+   via flexbox (align-items:center) puts the star, the number, and the
+   音 badge all on one shared vertical center, without needing to guess
+   pixel offsets from font metrics. body.compact overrides `top` to
+   match its own smaller padding-top for the same reason (see below). */
 .bookmark-btn {
   position: absolute;
-  top: 6px;
+  top: 0.5rem;
   left: 6px;
   width: 24px;
   height: 24px;
@@ -311,11 +323,20 @@ main {
   border-color: var(--teal);
   box-shadow: 0 0 0 2px var(--teal-light), 0 6px 20px var(--shadow-soft);
 }
+/* min-height matches .bookmark-btn's default (desktop) height — see the
+   comment on .bookmark-btn above for why this is what actually makes
+   the star/number/badge share one vertical center. Without this, the
+   row's height (and therefore its vertical center) silently depended on
+   whether a card had the 音 badge or not — .char-multi-badge's
+   line-height 1.4 renders taller than .char-num's line-height 1 alone —
+   so single-reading and multi-reading cards even centered *against each
+   other* slightly differently, on top of not matching the star. */
 .char-top-row {
   align-self: flex-end;
   display: flex;
   align-items: center;
   gap: 4px;
+  min-height: 24px;
 }
 .char-num {
   font-size: 0.7rem;
@@ -1383,6 +1404,10 @@ body.compact .char-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 
 body.compact .char-glyph { font-size: 2.2rem; }
 body.compact .char-pinyin { font-size: 0.8rem; }
 body.compact .char-card { padding: 0.65rem 0.5rem; contain-intrinsic-size: auto 84px; }
+/* Matches .char-card's compact padding-top above — see .bookmark-btn's
+   own comment for why `top` has to track padding-top exactly rather
+   than reusing the default-mode value. */
+body.compact .bookmark-btn { top: 0.65rem; }
 body.compact .card-result-btns { height: 20px; gap: 3px; }
 body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; }
 
@@ -1686,6 +1711,9 @@ html[data-theme-mode="auto"] .theme-icon-auto { display: inline-flex; }
   body.compact .card-result-btns { height: 36px; gap: 5px; }
   body.compact .card-result-btns button { font-size: 0.74rem; }
   .bookmark-btn { width: 34px; height: 34px; }
+  /* Matches .bookmark-btn's touch-device height bump directly above —
+     see .char-top-row's own comment for why the two need to stay equal. */
+  .char-top-row { min-height: 34px; }
 
   /* Singleton/low-repetition elements (flashcard nav, replay/speak,
      mini-modal confirm/cancel) — no per-card density tradeoff here, so
