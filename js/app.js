@@ -23,6 +23,14 @@ const HanziApp = {
   state: {
     currentFilter: 'all',
     currentSearch: '',
+    // Set from the search input's *raw* value before trim() strips it —
+    // a trailing space is a deliberate "match this exact pinyin syllable
+    // only" signal (see SearchManager.filter()'s exactPinyin param).
+    // "su" alone prefix-matches su/sun/sui/suo/...; "su " (trailing
+    // space) matches only the reading "su" itself. Reset alongside
+    // currentSearch everywhere that gets cleared, so a stale exact-match
+    // flag can never survive past the query that set it.
+    searchExactPinyin: false,
     visibleChars: [],
     renderedCount: 0,
     activeModalIdx: -1,
@@ -156,8 +164,16 @@ const HanziApp = {
   bindEvents() {
     this.dom.search.addEventListener('input', (e) => {
       clearTimeout(this.state.searchTimer);
+      const rawValue = e.target.value;
       this.state.searchTimer = setTimeout(() => {
-        this.state.currentSearch = e.target.value.trim();
+        const trimmed = rawValue.trim();
+        // Checked against rawValue (not trimmed) — trim() below is what
+        // actually strips the trailing space, so the signal has to be
+        // read before that happens. Empty-after-trim doesn't count (a
+        // lone space typed into an otherwise-empty box isn't "exact
+        // match nothing").
+        this.state.searchExactPinyin = trimmed.length > 0 && /\s$/.test(rawValue);
+        this.state.currentSearch = trimmed;
         this.state.practiceActiveId = null;
         this.renderGrid(true);
         if (this.state.isStudyMode) HistoryManager.scheduleHistorySave();
@@ -392,7 +408,8 @@ const HanziApp = {
       // switch) so it can never silently carry into 练习模式's view.
       this.state.bookmarkOnly && !this.state.isStudyMode,
       BookmarkManager.getSet(),
-      this.getPracticeChunkRange()
+      this.getPracticeChunkRange(),
+      this.state.searchExactPinyin
     );
   },
 
@@ -1333,6 +1350,7 @@ const HanziApp = {
     this.setCompact(false);
     this.dom.search.value = '';
     this.state.currentSearch = '';
+    this.state.searchExactPinyin = false;
 
     document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.level === 'all');
@@ -1381,6 +1399,7 @@ const HanziApp = {
 
     this.state.currentFilter = 'all';
     this.state.currentSearch = '';
+    this.state.searchExactPinyin = false;
     this.dom.search.value = '';
     this.state.wrongOnly = false;
     this.state.bookmarkOnly = false;

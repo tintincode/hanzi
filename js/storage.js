@@ -3,7 +3,7 @@
 // data migration (versioning), and history session pruning.
 
 const HISTORY_KEY_BASE = 'hanziStudyHistory.v1';
-const MAX_HISTORY_SESSIONS = 30;
+const MAX_HISTORY_SESSIONS = 60;
 
 // Which profile's data load()/save() currently read and write — set once by
 // ProfileManager during startup (see profiles.js), before HistoryManager

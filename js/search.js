@@ -49,8 +49,15 @@ const SearchManager = {
    * filter, before search matching, so searching *within* an active practice
    * chunk stays scoped to that chunk rather than reaching across the whole
    * level.
+   *
+   * exactPinyin (see app.js's search input handler, which sets this from a
+   * deliberate trailing space on the raw query) restricts pinyin matching to
+   * readings that equal the query exactly (tone-insensitively) — e.g. "su "
+   * matches only the reading "su", not the prefix-matched "sun"/"sui"/"suo"
+   * that plain "su" would also pull in. Exact character matches (c.c === q)
+   * and the level/chunk/wrong/bookmark filters are unaffected either way.
    */
-  filter(query, levelFilter, levelRanges, wrongOnly, studyResults, bookmarkOnly, bookmarkedSet, chunkRange) {
+  filter(query, levelFilter, levelRanges, wrongOnly, studyResults, bookmarkOnly, bookmarkedSet, chunkRange, exactPinyin) {
     let chars = allChars;
 
     // 1. Level Filter
@@ -77,12 +84,22 @@ const SearchManager = {
     // would never find it. Confirmed empirically against the real dataset
     // before concluding this (an earlier read of this function assumed it
     // was dead code from manual tracing alone, which turned out wrong).
+    //
+    // When exactPinyin is set, none of the prefix/substring checks above
+    // apply — only an exact (tone-insensitive) reading match counts. This
+    // is deliberately a *stricter* mode layered on top of the same query
+    // string, not a different query syntax — the trailing space that
+    // triggers it never reaches here at all (app.js strips it before
+    // setting currentSearch), so `q` itself is identical either way.
     if (query) {
       const q = query.toLowerCase();
       const qStripped = this.stripTones(q);
       chars = chars.filter(c => {
         if (c.c === q) return true;
         const stripped = strippedPinyinCache.get(c);
+        if (exactPinyin) {
+          return c.p.some((p, i) => p === q || (stripped ? stripped[i] : this.stripTones(p)) === qStripped);
+        }
         if (c.p.some((p, i) => p === q || p.startsWith(q) || (stripped ? stripped[i] : this.stripTones(p)).startsWith(qStripped))) {
           return true;
         }
