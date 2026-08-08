@@ -793,6 +793,63 @@ body.study-mode .practice-bar { display: block; }
   transform: translateX(-50%) translateY(0);
 }
 
+/* Storage-quota warning — see app.js's showStorageWarning(). Deliberately
+   NOT positioned alongside .practice-complete-toast (bottom-center):
+   that one is a brief, dismissible celebration; this is a "something's
+   actually wrong" notice that stays until manually closed, so it gets
+   its own spot (top-center) to avoid the two ever visually colliding if
+   a save happens to fail right as a practice session completes. z-index
+   350 — deliberately above .mini-backdrop's 340 (the highest other
+   overlay in the app), since a save can fail while a confirm dialog is
+   open (e.g. mid rename/delete flow) and this should stay visible
+   regardless of whatever else is on screen. */
+.storage-warning-toast {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  margin-top: 0.75rem;
+  width: min(520px, calc(100vw - 2rem));
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  padding: 0.7rem 0.6rem 0.7rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  box-shadow: 0 8px 24px var(--shadow-color);
+  z-index: 350;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.storage-warning-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.storage-warning-toast span { flex: 1; }
+.storage-warning-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+  transition: background 0.15s;
+}
+.storage-warning-close:hover { background: rgba(0, 0, 0, 0.08); }
+
 /* Reading-progress bar (阅读模式) — mirrors .practice-bar's sticky
    placement below the header, but shown only outside study-mode, since
    the two bars are mutually exclusive (never both visible at once). */

@@ -53,9 +53,28 @@ const HanziApp = {
     wrongOnly: false,
     bookmarkOnly: false,
     isStudyMode: false,
-    focusTrapContainer: null,
-    focusTrapHandler: null,
-    focusTrapReturnEl: null
+    // A stack, not a single slot — several flows open a modal (via
+    // openMiniModal) from *within* another already-open, already-trapped
+    // panel: profiles.js's create/rename/delete-profile flows all run
+    // while the profile panel itself is open; history.js's rename/
+    // delete-session and clear-history flows likewise run from within the
+    // open history panel. With a single shared container/handler/returnEl
+    // slot, the inner modal's openFocusTrap() call would silently
+    // overwrite the outer panel's own — permanently leaking the outer
+    // panel's keydown listener (its own later closeFocusTrap() call would
+    // find the slot already pointing at the inner modal and become a
+    // no-op) and losing track of where to return focus once the outer
+    // panel itself closes. A stack fixes this cleanly: opening a trap
+    // pushes; closing pops just the top entry, leaving whatever's
+    // underneath completely untouched and still correctly wired up.
+    focusTrapStack: [],
+    // Guards showStorageWarning() so it surfaces once per page load, not
+    // once per failed save. Once localStorage is genuinely full, *every*
+    // subsequent mark/bookmark/rename would otherwise fail and re-trigger
+    // the warning — showing it once, with a manual close button, tells
+    // the person what's going on without hammering them with a toast on
+    // every single interaction from then on.
+    storageWarningShown: false
   },
 
   init() {
@@ -81,6 +100,15 @@ const HanziApp = {
     HistoryManager.init(this);
     SearchManager.init(this.allChars);
     this.cacheDOM();
+    // BookmarkManager deliberately has no reference to the app (see its
+    // own file header — kept decoupled, same "no app coupling" stance as
+    // SearchManager/SpeechManager), so it can't call showStorageWarning()
+    // directly. This one-time callback registration is the seam that lets
+    // it surface a save failure to the UI without taking on that
+    // coupling — StorageManager.save() failures (history) are instead
+    // caught directly inside HistoryManager.saveHistoryState(), since
+    // HistoryManager already holds an app reference.
+    BookmarkManager.onSaveFailure(() => this.showStorageWarning());
     ThemeManager.init(this);
     ProfileManager.updateProfileButtonLabel();
     this.bindEvents();
@@ -143,6 +171,8 @@ const HanziApp = {
       profileAddBtn: document.getElementById('profile-add-btn'),
       scoreResetBtn: document.getElementById('score-reset-btn'),
       practiceCompleteToast: document.getElementById('practice-complete-toast'),
+      storageWarningToast: document.getElementById('storage-warning-toast'),
+      storageWarningClose: document.getElementById('storage-warning-close'),
       undoBarBtn: document.getElementById('undo-bar-btn'),
       undoBarCount: document.getElementById('undo-bar-count'),
       siteTitleBtn: document.getElementById('site-title-btn'),
@@ -270,6 +300,15 @@ const HanziApp = {
     this.dom.helpModal.addEventListener('click', (e) => {
       if (e.target === this.dom.helpModal) this.closeHelp();
     });
+
+    if (this.dom.storageWarningClose) {
+      this.dom.storageWarningClose.addEventListener('click', () => {
+        this.dom.storageWarningToast.classList.remove('show');
+        // storageWarningShown stays true — dismissing is a one-way action
+        // for the rest of this page load, not a snooze; it shouldn't pop
+        // back up on the next failed save.
+      });
+    }
 
     this.dom.wrongFilterBtn.addEventListener('click', () => this.toggleWrongOnly());
     if (this.dom.bookmarkFilterBtn) {
@@ -895,6 +934,24 @@ const HanziApp = {
     this.state.completeToastTimer = setTimeout(() => this.dom.practiceCompleteToast.classList.remove('show'), 2600);
   },
 
+  // Surfaces a localStorage save failure (almost always quota exceeded)
+  // to the person, instead of the previous behavior of only logging it to
+  // the console — someone could otherwise keep marking cards or
+  // bookmarking characters for a while, with nothing actually persisting
+  // from that point on, and have no way to know. Deliberately does NOT
+  // auto-hide on a timer the way showPracticeCompleteToast() does — this
+  // is a "you should probably know about this" notice, not a fleeting
+  // celebration, so it stays up until manually dismissed via its own
+  // close button (wired once in bindEvents()). Guarded by
+  // storageWarningShown so it appears once per page load rather than
+  // re-triggering on every single subsequent failed save once the quota
+  // is already exhausted.
+  showStorageWarning() {
+    if (this.state.storageWarningShown) return;
+    this.state.storageWarningShown = true;
+    if (this.dom.storageWarningToast) this.dom.storageWarningToast.classList.add('show');
+  },
+
   syncPracticeSelection() {
     if (!this.state.isStudyMode) return;
     if (!this.state.visibleChars.some(c => c.i === this.state.practiceActiveId)) {
@@ -1010,13 +1067,17 @@ const HanziApp = {
   },
 
   openFocusTrap(container, preferredFocusEl) {
-    this.state.focusTrapReturnEl = document.activeElement;
-    this.state.focusTrapContainer = container;
+    // Captured per-call, not shared — this trap's own entry remembers
+    // exactly what was focused right before *it* opened, regardless of
+    // whether that's the page body (first/outermost trap) or a button
+    // inside some other panel that's already open underneath it (see the
+    // stack comment on focusTrapStack in state{} above).
+    const returnEl = document.activeElement;
 
     const toFocus = preferredFocusEl || this.getFocusableIn(container)[0];
     if (toFocus) toFocus.focus();
 
-    this.state.focusTrapHandler = (e) => {
+    const handler = (e) => {
       if (e.key !== 'Tab') return;
       const items = this.getFocusableIn(container);
       if (!items.length) return;
@@ -1033,19 +1094,22 @@ const HanziApp = {
         first.focus();
       }
     };
-    container.addEventListener('keydown', this.state.focusTrapHandler);
+    container.addEventListener('keydown', handler);
+    this.state.focusTrapStack.push({ container, handler, returnEl });
   },
 
   closeFocusTrap() {
-    const { focusTrapContainer, focusTrapHandler, focusTrapReturnEl } = this.state;
-    if (focusTrapContainer && focusTrapHandler) {
-      focusTrapContainer.removeEventListener('keydown', focusTrapHandler);
-    }
-    this.state.focusTrapContainer = null;
-    this.state.focusTrapHandler = null;
-    this.state.focusTrapReturnEl = null;
-    if (focusTrapReturnEl && document.body.contains(focusTrapReturnEl)) {
-      focusTrapReturnEl.focus();
+    // Pops only the top (most-recently-opened) entry — whatever trap, if
+    // any, is underneath stays completely untouched: its listener is
+    // still attached, and its own eventual closeFocusTrap() call will
+    // correctly pop and clean up *that* entry in turn. This is what makes
+    // nested modals (e.g. a confirm dialog opened from within an already-
+    // open panel) safe — see the stack comment on focusTrapStack above.
+    if (!this.state.focusTrapStack.length) return;
+    const { container, handler, returnEl } = this.state.focusTrapStack.pop();
+    container.removeEventListener('keydown', handler);
+    if (returnEl && document.body.contains(returnEl)) {
+      returnEl.focus();
     }
   },
 

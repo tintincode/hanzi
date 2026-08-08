@@ -70,7 +70,14 @@ const HistoryManager = {
   },
 
   saveHistoryState() {
-    StorageManager.save(this.state.historyState);
+    const ok = StorageManager.save(this.state.historyState);
+    // A failure here is almost always a full localStorage quota — see
+    // app.js's showStorageWarning() for why this surfaces to the person
+    // instead of just the console.error already logged inside
+    // StorageManager.save(). Checked at this single call site rather than
+    // at each of saveHistoryState()'s several callers, since they'd all
+    // need the identical check otherwise.
+    if (!ok && this.app) this.app.showStorageWarning();
   },
 
   // --- Backup / restore (练习模式 history only — exports exactly what

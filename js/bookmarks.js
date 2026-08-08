@@ -21,6 +21,13 @@ const STORAGE_KEY_BASE = 'hanziStudyBookmarks.v1';
 
 let bookmarked = new Set();
 let profileId = null;
+// Set once by app.js during init (see onSaveFailure below) — deliberately
+// NOT a full reference to the app itself, keeping this module decoupled
+// the same way SearchManager/SpeechManager are. Just a callback the app
+// can use to notice when a save silently failed (almost always a full
+// localStorage quota) and surface that to the person instead of it only
+// reaching the console.
+let onSaveError = null;
 
 const BookmarkManager = {
   // Sets which profile's bookmarks this module reads/writes (one key per
@@ -42,6 +49,14 @@ const BookmarkManager = {
     }
   },
 
+  // Registers a callback invoked whenever save() fails. One-time setup,
+  // called once from app.js's init() — see the comment on the module-
+  // private onSaveError above for why this exists instead of just giving
+  // this module a direct app reference.
+  onSaveFailure(callback) {
+    onSaveError = callback;
+  },
+
   key() {
     return profileId ? `${STORAGE_KEY_BASE}.${profileId}` : STORAGE_KEY_BASE;
   },
@@ -51,6 +66,11 @@ const BookmarkManager = {
   },
 
   // Returns the new state (true = now bookmarked, false = now removed).
+  // Unchanged return shape even though save() can now fail — the
+  // in-memory bookmark state still applies for this session either way
+  // (see save()'s own comment), so what toggle() reports back is still
+  // accurate; onSaveError is how a persistence failure specifically gets
+  // surfaced, independent of this return value.
   toggle(id) {
     if (bookmarked.has(id)) {
       bookmarked.delete(id);
@@ -68,6 +88,7 @@ const BookmarkManager = {
       // localStorage unavailable — bookmark still applies for this
       // session, just won't persist across reloads.
       console.warn('BookmarkManager: failed to save bookmarks.', e);
+      if (onSaveError) onSaveError(e);
     }
   },
 

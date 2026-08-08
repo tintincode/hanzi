@@ -122,6 +122,12 @@
   </div>
 </div>
 <div class="practice-complete-toast" id="practice-complete-toast">🎉 本组已全部完成！</div>
+<div class="storage-warning-toast" id="storage-warning-toast" role="alert">
+  <span>本机存储空间已满，最近的更改可能未能保存。建议导出练习记录备份，或清理浏览器存储空间。</span>
+  <button class="storage-warning-close" id="storage-warning-close" aria-label="关闭提示">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+</div>
 
 <div class="reading-bar" aria-label="阅读进度">
   <div class="reading-bar-inner">
@@ -303,7 +309,7 @@
         </div>
         <div class="help-text">
           <strong>搜索汉字或拼音</strong>
-          <span>在搜索框中输入汉字（如「爱」）或拼音（如「ai」、「nai」）。支持不带声调输入，自动匹配所有音调。</span>
+          <span>在搜索框中输入汉字（如「爱」）或拼音（如「ai」、「nai」）。支持不带声调输入，自动匹配所有音调。在拼音后加一个空格可精确匹配该读音本身，不再匹配以此为前缀的其他拼音——例如「su」会同时列出 su、sun、sui、suo 等字，而「su 」（带末尾空格）仅列出读音正是 su 的字。</span>
         </div>
       </div>
       <div class="help-row">
@@ -385,6 +391,28 @@
     </div>
 
     <div class="help-section">
+      <div class="help-section-title">多资料 — 多人共用同一设备</div>
+      <div class="help-row">
+        <div class="help-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="help-text">
+          <strong>切换资料</strong>
+          <span>点击顶栏「资料」按钮（显示当前学习者名称）可打开资料切换面板，方便家人共用同一台设备时分开记录各自的学习进度。可在面板中新建、重命名或删除资料。</span>
+        </div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.5 8.5-.4.1-.6.1-1 0C7.5 20.5 4 18 4 13V6l8-3 8 3v7z"/><path d="m9 12 2 2 4-4"/></svg>
+        </div>
+        <div class="help-text">
+          <strong>各资料数据互相独立</strong>
+          <span>每个资料的练习历史与收藏都单独保存，切换或新建资料不会影响其他资料的数据，可放心使用。深色模式、紧凑视图等属于设备偏好，所有资料共用同一设置。</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="help-section">
       <div class="help-section-title">历史记录与错题复习</div>
       <div class="help-row">
         <div class="help-icon">
@@ -410,7 +438,7 @@
         </div>
         <div class="help-text">
           <strong>导出／导入记录</strong>
-          <span>练习历史保存在本机浏览器中，清除缓存或更换设备会导致记录丢失。点击「历史记录」面板中的「导出」可保存为 JSON 文件备份，「导入」可从备份文件恢复 — 会与本机现有记录自动合并，不会覆盖。</span>
+          <span>练习历史保存在本机浏览器中（按资料分开存放），清除缓存或更换设备会导致记录丢失。点击「历史记录」面板中的「导出」可保存为 JSON 文件备份，「导入」可从备份文件恢复 — 会与本机现有记录自动合并，不会覆盖。导出／导入仅针对当前资料。</span>
         </div>
       </div>
     </div>
