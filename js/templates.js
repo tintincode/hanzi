@@ -89,12 +89,15 @@ export const Templates = {
   // button entirely here avoids offering an action that would just
   // silently do nothing.
   //
-  // iconExport/iconImport add a per-row backup/restore pair (see
-  // profiles.js's exportProfileFlow()/beginImportProfileFlow()) — unlike
-  // rename/delete, these work for ANY profile row regardless of whether
-  // it's the currently active one, so they're never conditionally
-  // omitted the way the delete button is.
-  profileCard(profile, isActive, canDelete, iconEdit, iconDelete, iconExport, iconImport, escapeFn) {
+  // iconExport adds a per-row backup button (see profiles.js's
+  // exportProfileFlow()) — works for ANY profile row regardless of
+  // whether it's the currently active one, so it's never conditionally
+  // omitted the way the delete button is. Import is deliberately NOT a
+  // per-row action (see the shared "导入资料" button elsewhere in the
+  // panel, in index.html) — importing resolves its own target profile by
+  // matching the backup file's saved name, rather than needing you to
+  // pick a row first.
+  profileCard(profile, isActive, canDelete, iconEdit, iconDelete, iconExport, escapeFn) {
     return `
       <div class="profile-card${isActive ? ' active' : ''}" data-profile-id="${profile.id}" role="button" tabindex="0">
         <div class="profile-card-main">
@@ -103,7 +106,6 @@ export const Templates = {
         </div>
         <div class="profile-card-actions">
           <button class="profile-export-btn" data-profile-id="${profile.id}" title="导出此资料备份" aria-label="导出此资料备份">${iconExport}</button>
-          <button class="profile-import-btn" data-profile-id="${profile.id}" title="导入备份到此资料" aria-label="导入备份到此资料">${iconImport}</button>
           <button class="profile-rename-btn" data-profile-id="${profile.id}" title="重命名" aria-label="重命名资料">${iconEdit}</button>
           ${canDelete ? `<button class="profile-delete-btn" data-profile-id="${profile.id}" title="删除" aria-label="删除资料">${iconDelete}</button>` : ''}
         </div>

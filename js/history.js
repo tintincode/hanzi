@@ -82,26 +82,12 @@ const HistoryManager = {
 
   // --- Backup / restore helpers. No standalone history-only export/
   // import UI exists anymore — profiles.js's per-profile backup (in the
-  // 资料 panel) covers bookmarks + history together now. What's left here
-  // are the pure sanitize/merge helpers, reused by both
-  // importSessionsIntoProfile() below and profiles.js's import flow;
-  // they don't touch this.state, so they work equally well for the
-  // currently active profile or an arbitrary other one. ---
-
-  // Merge by session id, keeping whichever copy (local or imported) has the
-  // later updatedAt — so restoring a backup on a device that already has
-  // some progress never silently discards it.
-  mergeSessionsById(localSessions, importedSessions) {
-    const map = new Map();
-    localSessions.forEach(s => map.set(s.id, s));
-    importedSessions.forEach(s => {
-      const existing = map.get(s.id);
-      if (!existing || (s.updatedAt || 0) > (existing.updatedAt || 0)) {
-        map.set(s.id, s);
-      }
-    });
-    return Array.from(map.values());
-  },
+  // 资料 panel) covers bookmarks + history together, importing as a full
+  // replace rather than a merge. What's left here is sanitizeImportedSession()
+  // below, called directly by profiles.js to validate an imported
+  // session's shape before writing it — pure (doesn't touch this.state),
+  // so it works equally well regardless of which profile ends up
+  // receiving the data. ---
 
   // Rebuilds a session from only the parts of an imported record we
   // actually trust, rather than passing the raw parsed object straight
@@ -146,33 +132,6 @@ const HistoryManager = {
       results,
       markHistory
     };
-  },
-
-  // Same validation/sanitize/merge that used to live in the now-removed
-  // importHistoryFromFile(), but for an arbitrary profile id rather than
-  // whichever one is currently active — used by profiles.js's per-row
-  // import, which needs to work for a profile other than the active one.
-  // Reuses sanitizeImportedSession()/mergeSessionsById() (both pure —
-  // neither touches this.state), but reads/writes via StorageManager's
-  // loadFor(id)/saveFor(id, ...) instead of this.state.historyState/
-  // saveHistoryState(), so it never disturbs whatever's actually loaded
-  // for the currently active profile. Returns null if nothing in
-  // rawSessions was recognizable, otherwise {added, total} — the caller
-  // (profiles.js) decides whether id happens to be the active profile
-  // and, if so, reloads the live view separately.
-  importSessionsIntoProfile(profileId, rawSessions) {
-    if (!Array.isArray(rawSessions)) return null;
-    const validSessions = rawSessions
-      .filter(s => s && typeof s.id === 'string' && typeof s.level !== 'undefined' && s.results && typeof s.results === 'object')
-      .map(s => this.sanitizeImportedSession(s));
-    if (!validSessions.length) return null;
-
-    const targetState = StorageManager.loadFor(profileId);
-    const before = targetState.sessions.length;
-    targetState.sessions = this.mergeSessionsById(targetState.sessions, validSessions);
-    StorageManager.saveFor(profileId, targetState);
-    const added = Math.max(0, targetState.sessions.length - before);
-    return { added, total: validSessions.length };
   },
 
   syncActiveSession() {

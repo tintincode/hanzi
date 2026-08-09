@@ -166,6 +166,7 @@ const HanziApp = {
       profilePanelList: document.getElementById('profile-panel-list'),
       profilePanelClose: document.getElementById('profile-panel-close'),
       profileAddBtn: document.getElementById('profile-add-btn'),
+      profileImportBtn: document.getElementById('profile-import-btn'),
       profileImportInput: document.getElementById('profile-import-input'),
       scoreResetBtn: document.getElementById('score-reset-btn'),
       practiceCompleteToast: document.getElementById('practice-complete-toast'),
@@ -325,6 +326,9 @@ const HanziApp = {
     this.dom.profilePanelClose.addEventListener('click', () => ProfileManager.closeProfilePanel());
     this.dom.profilePanel.addEventListener('click', (e) => { if (e.target === this.dom.profilePanel) ProfileManager.closeProfilePanel(); });
     this.dom.profileAddBtn.addEventListener('click', () => ProfileManager.createProfileFlow());
+    if (this.dom.profileImportBtn) {
+      this.dom.profileImportBtn.addEventListener('click', () => ProfileManager.beginImportProfileFlow());
+    }
     if (this.dom.profileImportInput) {
       this.dom.profileImportInput.addEventListener('change', (e) => {
         const file = e.target.files && e.target.files[0];

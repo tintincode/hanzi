@@ -150,43 +150,20 @@ const BookmarkManager = {
   },
 
   // --- Backup / restore (used by profiles.js's per-profile export/
-  // import — see mergeIdsFor()/loadIdsFor() below and their doc comments.
-  // No standalone bookmarks-only export/import UI exists anymore; the
-  // per-profile backup in the 资料 panel covers bookmarks + history
-  // together now. sanitizeImportedIds() stays generic/reusable rather
-  // than folded into mergeIdsFor(), since it also has to accept bookmark
-  // arrays found inside older, standalone bookmark-only backup files —
-  // see profiles.js's importProfileDataFromParsed() for that detection.) ---
+  // import — see loadIdsFor()/saveIdsFor() above and profiles.js's
+  // applyProfileDataReplace()/extractBackupContents(). No standalone
+  // bookmarks-only export/import UI exists anymore; the per-profile
+  // backup in the 资料 panel covers bookmarks + history together, and
+  // import there is a full replace, not a merge — so there's no
+  // bookmarks-specific merge helper here anymore, just validation.) ---
 
   // Sanitizes an arbitrary imported value down to the character ids
   // worth trusting — same distrust-the-file stance as history.js's
   // sanitizeImportedSession(), just far simpler since there's only one
-  // field to validate: positive integers, deduplicated implicitly by the
-  // Set union in mergeIdsFor() below.
+  // field to validate: positive integers.
   sanitizeImportedIds(value) {
     if (!Array.isArray(value)) return [];
     return value.filter(n => Number.isInteger(n) && n > 0);
-  },
-
-  // Merges already-sanitized ids into an arbitrary profile's own stored
-  // set and persists — reads/writes that profile's key directly via
-  // loadIdsFor()/saveIdsFor(), without touching the shared in-memory
-  // `bookmarked` Set at all (which only ever reflects whichever profile
-  // is currently active). This is what lets profiles.js's per-row import
-  // work for a profile other than the currently active one. Deliberately
-  // just a union, not history's merge-by-id-with-updatedAt — a bookmark
-  // has no version to compare, no "which copy is newer" question: a
-  // character is either bookmarked or it isn't, so importing can only
-  // ever add, never conflict with or overwrite anything already there.
-  // Returns {added, total} so the caller can report back what happened.
-  mergeIdsFor(id, rawIds) {
-    const sanitized = this.sanitizeImportedIds(rawIds);
-    const existing = new Set(this.loadIdsFor(id));
-    const before = existing.size;
-    for (const bid of sanitized) existing.add(bid);
-    const merged = [...existing];
-    this.saveIdsFor(id, merged);
-    return { added: existing.size - before, total: merged.length };
   }
 };
 

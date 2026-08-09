@@ -1421,12 +1421,18 @@ body.study-mode .reading-bar { display: none; }
 }
 .profile-card-actions button:hover { background: var(--surface); color: var(--ink); }
 .profile-card.active .profile-card-actions button:hover { background: rgba(255,255,255,0.6); }
+.profile-panel-footer {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0.7rem 0.7rem;
+}
 .profile-add-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  margin: 0 0.7rem 0.7rem;
+  flex: 1;
+  min-width: 0;
   padding: 0.6rem;
   border: 1px dashed var(--border);
   border-radius: 12px;

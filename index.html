@@ -188,16 +188,23 @@
       </button>
     </div>
     <div class="profile-panel-list" id="profile-panel-list"></div>
+    <div class="profile-panel-footer">
     <button class="profile-add-btn" id="profile-add-btn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       新建资料
     </button>
-    <!-- Shared by every profile row's import button (see profiles.js's
-         beginImportProfileFlow/importProfileFromFile) — which profile a
-         selected file gets imported into is tracked in
-         ProfileManager.state.pendingImportProfileId, set right before
-         this is programmatically clicked, rather than needing one input
-         per row. -->
+      <!-- Import resolves its own target profile by matching the backup
+           file's saved profileName against existing profiles (see
+           profiles.js's importProfileFromFile()) — no existing match
+           creates a new profile and loads the data straight in; a match
+           asks before replacing that profile's data entirely. That's why
+           this is a single shared button rather than living per-row like
+           export does — there's no profile to pick beforehand. -->
+      <button class="profile-add-btn" id="profile-import-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        导入资料
+      </button>
+    </div>
     <input type="file" id="profile-import-input" accept="application/json,.json" style="display:none;">
   </div>
 </div>
@@ -414,7 +421,7 @@
         </div>
         <div class="help-text">
           <strong>按资料导出／导入备份</strong>
-          <span>资料切换面板中，每个资料卡片右侧都有独立的导出／导入按钮——可将该资料的练习历史与收藏一并备份为 JSON 文件，或从备份恢复，无需先切换到该资料。导入时会与该资料现有数据自动合并，不会覆盖；也兼容旧版单独导出的收藏或历史记录文件。</span>
+          <span>每个资料卡片右侧的导出按钮，可将该资料的练习历史与收藏一并备份为 JSON 文件，无需先切换到该资料。面板底部的「导入资料」为共用按钮：若备份中的资料名称不存在，会自动新建资料并载入；若名称已存在，会先询问是否用备份完全覆盖该资料现有数据（此操作无法撤销）。也兼容旧版单独导出的收藏或历史记录文件。</span>
         </div>
       </div>
     </div>
