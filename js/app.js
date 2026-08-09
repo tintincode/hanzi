@@ -131,8 +131,6 @@ const HanziApp = {
       filterLevelGroup: document.getElementById('filter-level-group'),
       btnNormal: document.getElementById('btn-normal'),
       btnStudy: document.getElementById('btn-study'),
-      btnLarge: document.getElementById('btn-large'),
-      btnCompact: document.getElementById('btn-compact'),
       helpBtn: document.getElementById('help-btn'),
       helpModal: document.getElementById('help-modal'),
       helpCloseBtn: document.getElementById('help-close-btn'),
@@ -291,8 +289,6 @@ const HanziApp = {
 
     this.dom.btnNormal.addEventListener('click', () => this.setStudy(false));
     this.dom.btnStudy.addEventListener('click', () => this.setStudy(true));
-    this.dom.btnLarge.addEventListener('click', () => this.setCompact(false));
-    this.dom.btnCompact.addEventListener('click', () => this.setCompact(true));
 
     this.dom.helpBtn.addEventListener('click', () => this.openHelp());
     this.dom.helpCloseBtn.addEventListener('click', () => this.closeHelp());
@@ -1365,13 +1361,6 @@ const HanziApp = {
     this.updateHeaderOffset();
   },
 
-  setCompact(on) {
-    document.body.classList.toggle('compact', on);
-    this.dom.btnLarge.classList.toggle('active', !on);
-    this.dom.btnCompact.classList.toggle('active', on);
-    this.updateHeaderOffset();
-  },
-
   toggleWrongOnly() {
     this.state.wrongOnly = !this.state.wrongOnly;
     this.dom.wrongFilterBtn.setAttribute('aria-pressed', String(this.state.wrongOnly));
@@ -1413,7 +1402,6 @@ const HanziApp = {
   goHome() {
     HistoryManager.saveActiveSession(true);
     this.setStudy(false);
-    this.setCompact(false);
     this.dom.search.value = '';
     this.state.currentSearch = '';
     this.state.searchExactPinyin = false;

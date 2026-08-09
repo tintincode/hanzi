@@ -285,8 +285,7 @@ main {
    height starting at the same y — so each one centering its own content
    via flexbox (align-items:center) puts the star, the number, and the
    音 badge all on one shared vertical center, without needing to guess
-   pixel offsets from font metrics. body.compact overrides `top` to
-   match its own smaller padding-top for the same reason (see below). */
+   pixel offsets from font metrics. */
 .bookmark-btn {
   position: absolute;
   top: 0.5rem;
@@ -1442,7 +1441,6 @@ body.study-mode .reading-bar { display: none; }
   font-size: 0.84rem;
   font-weight: 500;
   cursor: pointer;
-  flex-shrink: 0;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .profile-add-btn:hover { background: var(--bg); border-color: var(--ink3); color: var(--ink); }
@@ -1462,18 +1460,6 @@ body.study-mode .reading-bar { display: none; }
    no --pill-accent), and unlike undo/wrong-filter/history it has no count
    badge, just an icon + label. Used to be a bare underlined text link,
    visually inconsistent with the three pill buttons it sits next to. */
-/* Compact view */
-body.compact .char-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 0.6rem; }
-body.compact .char-glyph { font-size: 2.2rem; }
-body.compact .char-pinyin { font-size: 0.8rem; }
-body.compact .char-card { padding: 0.65rem 0.5rem; contain-intrinsic-size: auto 84px; }
-/* Matches .char-card's compact padding-top above — see .bookmark-btn's
-   own comment for why `top` has to track padding-top exactly rather
-   than reusing the default-mode value. */
-body.compact .bookmark-btn { top: 0.65rem; }
-body.compact .card-result-btns { height: 20px; gap: 3px; }
-body.compact .card-result-btns button { font-size: 0.68rem; border-radius: 5px; }
-
 
 .profile-btn {
   display: inline-flex;
@@ -1603,6 +1589,7 @@ html[data-theme-mode="auto"] .theme-icon-auto { display: inline-flex; }
   padding: 0.5rem 0.7rem;
   border-radius: 8px;
   border: 1px solid var(--border);
+  background: var(--bg);
   font-family: inherit;
   font-size: 0.88rem;
   margin-bottom: 1rem;
@@ -1758,21 +1745,18 @@ html[data-theme-mode="auto"] .theme-icon-auto { display: inline-flex; }
    guarantee every rule here always wins the cascade, regardless of where
    in the file its corresponding base rule happens to live — this exact
    class of bug (an override silently losing to a same-specificity rule
-   that appears later in the file) was caught once already for
-   body.compact .card-result-btns, and caught again for
-   .mini-modal-actions button during this consolidation pass; moving the
-   whole block here removes the need to reason about file position for
-   every future addition. */
+   that appears later in the file) was caught for .mini-modal-actions
+   button during an earlier consolidation pass; moving the whole block
+   here removes the need to reason about file position for every future
+   addition. */
 @media (hover: none) {
   /* Per-card grading buttons — NOT applied on hover-capable devices: with
      up to 8,105 cards in the "全部" view, enlarging these globally would
-     noticeably reduce how many cards fit on screen for mouse users,
-     undoing the density the existing 紧凑 (compact) mode is for. Same
-     reasoning applies to .bookmark-btn (阅读模式's per-card bookmark star). */
+     noticeably reduce how many cards fit on screen for mouse users, who
+     don't need as large a target as fingers do. Same reasoning applies
+     to .bookmark-btn (阅读模式's per-card bookmark star). */
   .card-result-btns { height: 44px; gap: 8px; }
   .card-result-btns button { font-size: 0.85rem; }
-  body.compact .card-result-btns { height: 36px; gap: 5px; }
-  body.compact .card-result-btns button { font-size: 0.74rem; }
   .bookmark-btn { width: 34px; height: 34px; }
   /* Matches .bookmark-btn's touch-device height bump directly above —
      see .char-top-row's own comment for why the two need to stay equal. */

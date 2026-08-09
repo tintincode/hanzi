@@ -6,10 +6,10 @@
 // per-key storage mechanics. This module owns the profile list itself
 // (hanziStudyProfiles.v1) plus the profile-panel UI.
 //
-// Deliberately NOT per-profile: theme (light/dark/auto) and compact-mode.
-// Those are device/display preferences, not learner data — profiles
-// switching them out from under you every time you change who's using
-// the device would be surprising, not helpful.
+// Deliberately NOT per-profile: theme (light/dark/auto). That's a
+// device/display preference, not learner data — profiles switching it
+// out from under you every time you change who's using the device would
+// be surprising, not helpful.
 
 import { StorageManager } from './storage.js';
 import { BookmarkManager } from './bookmarks.js';
