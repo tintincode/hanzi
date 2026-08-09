@@ -155,9 +155,6 @@ const HanziApp = {
       historyPanel: document.getElementById('history-panel'),
       historyPanelList: document.getElementById('history-panel-list'),
       historyPanelClose: document.getElementById('history-panel-close'),
-      historyExportBtn: document.getElementById('history-export-btn'),
-      historyImportBtn: document.getElementById('history-import-btn'),
-      historyImportInput: document.getElementById('history-import-input'),
       historySelectToggleBtn: document.getElementById('history-select-toggle-btn'),
       historySelectToolbar: document.getElementById('history-select-toolbar'),
       historySelectAllBtn: document.getElementById('history-select-all-btn'),
@@ -169,6 +166,7 @@ const HanziApp = {
       profilePanelList: document.getElementById('profile-panel-list'),
       profilePanelClose: document.getElementById('profile-panel-close'),
       profileAddBtn: document.getElementById('profile-add-btn'),
+      profileImportInput: document.getElementById('profile-import-input'),
       scoreResetBtn: document.getElementById('score-reset-btn'),
       practiceCompleteToast: document.getElementById('practice-complete-toast'),
       storageWarningToast: document.getElementById('storage-warning-toast'),
@@ -320,13 +318,6 @@ const HanziApp = {
     this.dom.historyToggleBtn.addEventListener('click', () => HistoryManager.openHistoryPanel());
     this.dom.historyPanelClose.addEventListener('click', () => HistoryManager.closeHistoryPanel());
     this.dom.historyPanel.addEventListener('click', (e) => { if (e.target === this.dom.historyPanel) HistoryManager.closeHistoryPanel(); });
-    this.dom.historyExportBtn.addEventListener('click', () => HistoryManager.exportHistory());
-    this.dom.historyImportBtn.addEventListener('click', () => this.dom.historyImportInput.click());
-    this.dom.historyImportInput.addEventListener('change', (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (file) HistoryManager.importHistoryFromFile(file);
-      e.target.value = ''; // allow re-selecting the same file next time
-    });
     this.dom.historySelectToggleBtn.addEventListener('click', () => HistoryManager.toggleSelectMode());
     this.dom.historySelectAllBtn.addEventListener('click', () => HistoryManager.toggleSelectAllSessions());
     this.dom.historyBulkDeleteBtn.addEventListener('click', () => HistoryManager.bulkDeleteSelected());
@@ -334,6 +325,13 @@ const HanziApp = {
     this.dom.profilePanelClose.addEventListener('click', () => ProfileManager.closeProfilePanel());
     this.dom.profilePanel.addEventListener('click', (e) => { if (e.target === this.dom.profilePanel) ProfileManager.closeProfilePanel(); });
     this.dom.profileAddBtn.addEventListener('click', () => ProfileManager.createProfileFlow());
+    if (this.dom.profileImportInput) {
+      this.dom.profileImportInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) ProfileManager.importProfileFromFile(file);
+        e.target.value = ''; // allow re-selecting the same file next time
+      });
+    }
     this.dom.scoreResetBtn.addEventListener('click', () => HistoryManager.startNewPracticeSession());
     this.dom.siteTitleBtn.addEventListener('click', () => this.goHome());
 

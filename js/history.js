@@ -80,24 +80,13 @@ const HistoryManager = {
     if (!ok && this.app) this.app.showStorageWarning();
   },
 
-  // --- Backup / restore (练习模式 history only — exports exactly what
-  // StorageManager persists, so nothing needs to know about this format
-  // beyond StorageManager itself) ---
-
-  exportHistory() {
-    this.saveActiveSession(true); // flush any pending progress first
-    const data = JSON.stringify(this.state.historyState, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const stamp = new Date().toISOString().slice(0, 10);
-    a.href = url;
-    a.download = `hanzi-study-history-${stamp}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  },
+  // --- Backup / restore helpers. No standalone history-only export/
+  // import UI exists anymore — profiles.js's per-profile backup (in the
+  // 资料 panel) covers bookmarks + history together now. What's left here
+  // are the pure sanitize/merge helpers, reused by both
+  // importSessionsIntoProfile() below and profiles.js's import flow;
+  // they don't touch this.state, so they work equally well for the
+  // currently active profile or an arbitrary other one. ---
 
   // Merge by session id, keeping whichever copy (local or imported) has the
   // later updatedAt — so restoring a backup on a device that already has
@@ -159,53 +148,31 @@ const HistoryManager = {
     };
   },
 
-  importHistoryFromFile(file) {
-    const alert = (title, text) => this.app.openMiniModal({ title, text, confirmLabel: '确定', onConfirm: () => {} });
+  // Same validation/sanitize/merge that used to live in the now-removed
+  // importHistoryFromFile(), but for an arbitrary profile id rather than
+  // whichever one is currently active — used by profiles.js's per-row
+  // import, which needs to work for a profile other than the active one.
+  // Reuses sanitizeImportedSession()/mergeSessionsById() (both pure —
+  // neither touches this.state), but reads/writes via StorageManager's
+  // loadFor(id)/saveFor(id, ...) instead of this.state.historyState/
+  // saveHistoryState(), so it never disturbs whatever's actually loaded
+  // for the currently active profile. Returns null if nothing in
+  // rawSessions was recognizable, otherwise {added, total} — the caller
+  // (profiles.js) decides whether id happens to be the active profile
+  // and, if so, reloads the live view separately.
+  importSessionsIntoProfile(profileId, rawSessions) {
+    if (!Array.isArray(rawSessions)) return null;
+    const validSessions = rawSessions
+      .filter(s => s && typeof s.id === 'string' && typeof s.level !== 'undefined' && s.results && typeof s.results === 'object')
+      .map(s => this.sanitizeImportedSession(s));
+    if (!validSessions.length) return null;
 
-    const reader = new FileReader();
-    reader.onerror = () => alert('导入失败', '读取文件时发生错误，请重试。');
-    reader.onload = () => {
-      let parsed;
-      try {
-        parsed = JSON.parse(reader.result);
-      } catch (e) {
-        alert('导入失败', '所选文件不是有效的 JSON 格式。');
-        return;
-      }
-      if (!parsed || !Array.isArray(parsed.sessions)) {
-        alert('导入失败', '文件内容与历史记录格式不符。');
-        return;
-      }
-      // Basic sanity filter — keep only entries that actually look like sessions.
-      const validSessions = parsed.sessions
-        .filter(s => s && typeof s.id === 'string' && typeof s.level !== 'undefined' && s.results && typeof s.results === 'object')
-        .map(s => this.sanitizeImportedSession(s));
-      if (!validSessions.length) {
-        alert('导入失败', '文件中没有可识别的练习记录。');
-        return;
-      }
-
-      const before = this.state.historyState.sessions.length;
-      this.state.historyState.sessions = this.mergeSessionsById(this.state.historyState.sessions, validSessions);
-      this.saveHistoryState(); // StorageManager.save() trims as part of writing
-
-      // If the currently active session was among the imported ones, reload
-      // its (possibly newer) data into the live view so what's on screen
-      // matches what's now in storage.
-      if (this.state.activeSession) {
-        const refreshed = this.getSession(this.state.activeSession.id);
-        if (refreshed) {
-          this.state.activeSession = refreshed;
-          this.loadSessionResults(refreshed);
-          if (this.app.state.isStudyMode) this.app.renderGrid(false);
-        }
-      }
-
-      this.updateHistorySelect();
-      const added = Math.max(0, this.state.historyState.sessions.length - before);
-      alert('导入完成', `已处理 ${validSessions.length} 条记录（新增 ${added} 条，其余为更新或重复，已自动合并）。`);
-    };
-    reader.readAsText(file);
+    const targetState = StorageManager.loadFor(profileId);
+    const before = targetState.sessions.length;
+    targetState.sessions = this.mergeSessionsById(targetState.sessions, validSessions);
+    StorageManager.saveFor(profileId, targetState);
+    const added = Math.max(0, targetState.sessions.length - before);
+    return { added, total: validSessions.length };
   },
 
   syncActiveSession() {

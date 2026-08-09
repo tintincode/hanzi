@@ -88,7 +88,13 @@ export const Templates = {
   // ProfileManager.deleteProfile() refuses anyway, but omitting the
   // button entirely here avoids offering an action that would just
   // silently do nothing.
-  profileCard(profile, isActive, canDelete, iconEdit, iconDelete, escapeFn) {
+  //
+  // iconExport/iconImport add a per-row backup/restore pair (see
+  // profiles.js's exportProfileFlow()/beginImportProfileFlow()) — unlike
+  // rename/delete, these work for ANY profile row regardless of whether
+  // it's the currently active one, so they're never conditionally
+  // omitted the way the delete button is.
+  profileCard(profile, isActive, canDelete, iconEdit, iconDelete, iconExport, iconImport, escapeFn) {
     return `
       <div class="profile-card${isActive ? ' active' : ''}" data-profile-id="${profile.id}" role="button" tabindex="0">
         <div class="profile-card-main">
@@ -96,6 +102,8 @@ export const Templates = {
           ${isActive ? '<span class="profile-card-badge">当前</span>' : ''}
         </div>
         <div class="profile-card-actions">
+          <button class="profile-export-btn" data-profile-id="${profile.id}" title="导出此资料备份" aria-label="导出此资料备份">${iconExport}</button>
+          <button class="profile-import-btn" data-profile-id="${profile.id}" title="导入备份到此资料" aria-label="导入备份到此资料">${iconImport}</button>
           <button class="profile-rename-btn" data-profile-id="${profile.id}" title="重命名" aria-label="重命名资料">${iconEdit}</button>
           ${canDelete ? `<button class="profile-delete-btn" data-profile-id="${profile.id}" title="删除" aria-label="删除资料">${iconDelete}</button>` : ''}
         </div>

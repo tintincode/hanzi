@@ -58,7 +58,14 @@ const BookmarkManager = {
   },
 
   key() {
-    return profileId ? `${STORAGE_KEY_BASE}.${profileId}` : STORAGE_KEY_BASE;
+    return this.keyFor(profileId);
+  },
+
+  // Builds the storage key for an arbitrary profile id, independent of
+  // whichever profile is currently active — mirrors storage.js's
+  // keyFor(). Used by loadIdsFor()/saveIdsFor() below.
+  keyFor(id) {
+    return id ? `${STORAGE_KEY_BASE}.${id}` : STORAGE_KEY_BASE;
   },
 
   isBookmarked(id) {
@@ -92,6 +99,36 @@ const BookmarkManager = {
     }
   },
 
+  // Reads an arbitrary profile's bookmarked ids directly from its own
+  // storage key, without touching the shared in-memory `bookmarked` Set
+  // (which only ever reflects whichever profile is currently active).
+  // Safe to call for a profile other than the active one — used by
+  // profiles.js to back up a profile you haven't switched to.
+  loadIdsFor(id) {
+    try {
+      const raw = localStorage.getItem(this.keyFor(id));
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.filter(n => Number.isInteger(n)) : [];
+    } catch (e) {
+      console.warn('BookmarkManager: failed to load bookmarks for profile.', id, e);
+      return [];
+    }
+  },
+
+  // Writes a full ids array directly to an arbitrary profile's own key,
+  // without touching the shared in-memory `bookmarked` Set. See
+  // loadIdsFor()'s comment.
+  saveIdsFor(id, ids) {
+    try {
+      localStorage.setItem(this.keyFor(id), JSON.stringify(ids));
+      return true;
+    } catch (e) {
+      console.warn('BookmarkManager: failed to save bookmarks for profile.', id, e);
+      if (onSaveError) onSaveError(e);
+      return false;
+    }
+  },
+
   count() {
     return bookmarked.size;
   },
@@ -110,6 +147,46 @@ const BookmarkManager = {
   // private-state pattern used in speech.js/search.js).
   getSet() {
     return bookmarked;
+  },
+
+  // --- Backup / restore (used by profiles.js's per-profile export/
+  // import — see mergeIdsFor()/loadIdsFor() below and their doc comments.
+  // No standalone bookmarks-only export/import UI exists anymore; the
+  // per-profile backup in the 资料 panel covers bookmarks + history
+  // together now. sanitizeImportedIds() stays generic/reusable rather
+  // than folded into mergeIdsFor(), since it also has to accept bookmark
+  // arrays found inside older, standalone bookmark-only backup files —
+  // see profiles.js's importProfileDataFromParsed() for that detection.) ---
+
+  // Sanitizes an arbitrary imported value down to the character ids
+  // worth trusting — same distrust-the-file stance as history.js's
+  // sanitizeImportedSession(), just far simpler since there's only one
+  // field to validate: positive integers, deduplicated implicitly by the
+  // Set union in mergeIdsFor() below.
+  sanitizeImportedIds(value) {
+    if (!Array.isArray(value)) return [];
+    return value.filter(n => Number.isInteger(n) && n > 0);
+  },
+
+  // Merges already-sanitized ids into an arbitrary profile's own stored
+  // set and persists — reads/writes that profile's key directly via
+  // loadIdsFor()/saveIdsFor(), without touching the shared in-memory
+  // `bookmarked` Set at all (which only ever reflects whichever profile
+  // is currently active). This is what lets profiles.js's per-row import
+  // work for a profile other than the currently active one. Deliberately
+  // just a union, not history's merge-by-id-with-updatedAt — a bookmark
+  // has no version to compare, no "which copy is newer" question: a
+  // character is either bookmarked or it isn't, so importing can only
+  // ever add, never conflict with or overwrite anything already there.
+  // Returns {added, total} so the caller can report back what happened.
+  mergeIdsFor(id, rawIds) {
+    const sanitized = this.sanitizeImportedIds(rawIds);
+    const existing = new Set(this.loadIdsFor(id));
+    const before = existing.size;
+    for (const bid of sanitized) existing.add(bid);
+    const merged = [...existing];
+    this.saveIdsFor(id, merged);
+    return { added: existing.size - before, total: merged.length };
   }
 };
 

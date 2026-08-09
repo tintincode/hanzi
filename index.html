@@ -123,7 +123,7 @@
 </div>
 <div class="practice-complete-toast" id="practice-complete-toast">🎉 本组已全部完成！</div>
 <div class="storage-warning-toast" id="storage-warning-toast" role="alert">
-  <span>本机存储空间已满，最近的更改可能未能保存。建议导出练习记录备份，或清理浏览器存储空间。</span>
+  <span>本机存储空间已满，最近的更改可能未能保存。建议在「资料」面板中导出备份，或清理浏览器存储空间。</span>
   <button class="storage-warning-close" id="storage-warning-close" aria-label="关闭提示">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </button>
@@ -162,15 +162,6 @@
     <div class="history-panel-head">
       <h3>历史记录</h3>
       <div class="history-panel-actions" id="history-panel-actions">
-        <button class="history-io-btn" id="history-export-btn" title="导出备份（JSON 文件）">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          导出
-        </button>
-        <button class="history-io-btn" id="history-import-btn" title="导入备份（JSON 文件）">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          导入
-        </button>
-        <input type="file" id="history-import-input" accept="application/json,.json" style="display:none;">
         <button class="history-io-btn" id="history-select-toggle-btn">选择</button>
       </div>
       <button class="history-panel-close" id="history-panel-close" aria-label="关闭">
@@ -201,6 +192,13 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       新建资料
     </button>
+    <!-- Shared by every profile row's import button (see profiles.js's
+         beginImportProfileFlow/importProfileFromFile) — which profile a
+         selected file gets imported into is tracked in
+         ProfileManager.state.pendingImportProfileId, set right before
+         this is programmatically clicked, rather than needing one input
+         per row. -->
+    <input type="file" id="profile-import-input" accept="application/json,.json" style="display:none;">
   </div>
 </div>
 
@@ -349,7 +347,7 @@
         </div>
         <div class="help-text">
           <strong>只看收藏</strong>
-          <span>「阅读进度」旁的「只看收藏」可筛选出已收藏的汉字；「清空收藏」可一次性清除全部收藏（操作前会要求确认）。</span>
+          <span>「阅读进度」旁的「只看收藏」可筛选出已收藏的汉字；「清空收藏」可一次性清除全部收藏（操作前会要求确认）。收藏的导出／导入现已合并到「资料」面板中，与练习历史一并备份（见下文）。</span>
         </div>
       </div>
       <div class="help-row">
@@ -410,6 +408,15 @@
           <span>每个资料的练习历史与收藏都单独保存，切换或新建资料不会影响其他资料的数据，可放心使用。深色模式、紧凑视图等属于设备偏好，所有资料共用同一设置。</span>
         </div>
       </div>
+      <div class="help-row">
+        <div class="help-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="help-text">
+          <strong>按资料导出／导入备份</strong>
+          <span>资料切换面板中，每个资料卡片右侧都有独立的导出／导入按钮——可将该资料的练习历史与收藏一并备份为 JSON 文件，或从备份恢复，无需先切换到该资料。导入时会与该资料现有数据自动合并，不会覆盖；也兼容旧版单独导出的收藏或历史记录文件。</span>
+        </div>
+      </div>
     </div>
 
     <div class="help-section">
@@ -430,15 +437,6 @@
         <div class="help-text">
           <strong>只看错题</strong>
           <span>点击「只看错题」可筛选出本次练习中标记错误的汉字，方便集中复习。答对后会自动从错题列表中移除。</span>
-        </div>
-      </div>
-      <div class="help-row">
-        <div class="help-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </div>
-        <div class="help-text">
-          <strong>导出／导入记录</strong>
-          <span>练习历史保存在本机浏览器中（按资料分开存放），清除缓存或更换设备会导致记录丢失。点击「历史记录」面板中的「导出」可保存为 JSON 文件备份，「导入」可从备份文件恢复 — 会与本机现有记录自动合并，不会覆盖。导出／导入仅针对当前资料。</span>
         </div>
       </div>
     </div>
