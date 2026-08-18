@@ -1502,11 +1502,6 @@ body.study-mode .reading-bar { display: none; }
 }
 .help-btn:hover { background: var(--chrome-fill); color: var(--on-dark); }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
 .theme-toggle-btn {
   display: inline-flex;
   align-items: center;
@@ -1732,6 +1727,38 @@ html[data-theme-mode="auto"] .theme-icon-auto { display: inline-flex; }
   .history-panel { width: min(420px, 96vw); }
   .key-hint { display: none; }
   .back-to-top { right: 1rem; bottom: 1rem; width: 38px; height: 38px; }
+  /* 我的资料/使用说明 lose their text label below this width and shrink to
+     match .theme-toggle-btn's existing compact circular icon style. Both
+     keep their `title` attribute (native tooltip, plus already read by
+     screen readers via the accessible name it provides), so the control
+     is still identified for anyone who isn't just visually scanning
+     icons. This is what actually makes the merge below fit: .header-tools
+     now holds the 阅读/练习 toggle AND 我的资料/主题/使用说明 together (see
+     index.html — previously 我的资料/主题/使用说明 lived in a separate
+     .header-actions sibling), so header-inner's flex-wrap wraps them as
+     ONE unit on narrow screens instead of two separate stacked rows. At
+     full label size these five controls measure ~394px combined, wider
+     than even a 390px-viewport phone has room for after header padding;
+     shrinking 我的资料/使用说明 specifically (not the mode toggle — that
+     stays labeled, it's the control people reach for most) brings the
+     combined width down to something that actually fits. */
+  #profile-btn-name, .help-btn-label { display: none; }
+  .profile-btn, .help-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  /* Two more small, purely-spacing trims (no text or tap-target size
+     change) — at 320px specifically, the five merged controls above
+     still come in about 14px too wide to fit on one line, so the last
+     item (help) wraps to its own row on its own. These claw back ~14px
+     between them, closing that gap so 320px gets the same single-row
+     layout as every wider breakpoint tested. */
+  .header-tools { gap: 0.3rem; width: 100%; justify-content: space-between; }
+  .view-btn { padding: 0.35rem 0.5rem; }
 }
 /* Touch-target overrides — bumps grading/nav/action buttons to a real
    touch target on devices without real hover. Scoped to (hover: none)
