@@ -256,7 +256,7 @@ main {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.5rem 0.6rem 0.85rem;
+  padding: 0.85rem 0.6rem 0.85rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -288,7 +288,7 @@ main {
    pixel offsets from font metrics. */
 .bookmark-btn {
   position: absolute;
-  top: 0.5rem;
+  top: 0.85rem;
   left: 6px;
   width: 24px;
   height: 24px;
@@ -733,7 +733,7 @@ body.study-mode .practice-bar { display: block; }
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 1rem;
+  gap: 0.6rem;
   flex-wrap: wrap;
 }
 .practice-progress-wrap {
