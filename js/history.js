@@ -1,5 +1,5 @@
-import { StorageManager } from './storage.js';
-import { Templates } from './templates.js';
+import { StorageManager } from './storage.js?v=1.1';
+import { Templates } from './templates.js?v=1.1';
 
 // history.js
 // HistoryManager: owns practice-session persistence (localStorage) and the

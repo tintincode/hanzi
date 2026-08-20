@@ -1,12 +1,12 @@
 // js/app.js
-import { ALL_CHARS } from './data.js';
-import { SpeechManager } from './speech.js';
-import { HistoryManager } from './history.js';
-import { SearchManager } from './search.js';
-import { Templates } from './templates.js';
-import { BookmarkManager } from './bookmarks.js';
-import { ThemeManager } from './theme.js';
-import { ProfileManager } from './profiles.js';
+import { ALL_CHARS } from './data.js?v=1.1';
+import { SpeechManager } from './speech.js?v=1.1';
+import { HistoryManager } from './history.js?v=1.1';
+import { SearchManager } from './search.js?v=1.1';
+import { Templates } from './templates.js?v=1.1';
+import { BookmarkManager } from './bookmarks.js?v=1.1';
+import { ThemeManager } from './theme.js?v=1.1';
+import { ProfileManager } from './profiles.js?v=1.1';
 
 const HanziApp = {
   constants: {

@@ -1721,6 +1721,17 @@ html[data-theme-mode="auto"] .theme-icon-auto { display: inline-flex; }
   .char-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.6rem; }
   .practice-bar-inner { padding: 0.5rem 0.75rem; }
   .reading-bar-inner { padding: 0.5rem 0.75rem; }
+  /* Hidden below this width specifically because it's the one thing that
+     changes the row's wrapped-line count depending on marking state: it's
+     empty (zero width) before anything is graded, then suddenly a full
+     text label ("准确率 100%") once graded > 0 (see app.js) — at this
+     width there's exactly enough room for the rest of .practice-bar-inner
+     to sit on its current number of lines WITHOUT this label, but not
+     with it, so the bar would otherwise visibly grow taller the instant
+     you mark your first character and never shrink back. Hiding it
+     keeps the bar's height identical throughout a whole session instead
+     of it jumping once, right at the very start. */
+  .score-accuracy { display: none; }
   .pill-btn { padding: 0 0.45rem; }
   .pill-btn-label { display: none; }
   .filter-btn-count { display: none; }

@@ -11,10 +11,10 @@
 // out from under you every time you change who's using the device would
 // be surprising, not helpful.
 
-import { StorageManager } from './storage.js';
-import { BookmarkManager } from './bookmarks.js';
-import { HistoryManager } from './history.js';
-import { Templates } from './templates.js';
+import { StorageManager } from './storage.js?v=1.1';
+import { BookmarkManager } from './bookmarks.js?v=1.1';
+import { HistoryManager } from './history.js?v=1.1';
+import { Templates } from './templates.js?v=1.1';
 
 const PROFILES_KEY = 'hanziStudyProfiles.v1';
 // Same base strings StorageManager/BookmarkManager build their own
