@@ -421,7 +421,7 @@
                   v-for="group in practiceGroupsByTier[tier]" 
                   :key="group.globalIndex"
                   @click="selectPracticeGroup(group.globalIndex)"
-                  :class="groupTileClass(group.globalIndex)"
+                  :style="groupTileStyle(group.globalIndex)"
                   class="bg-[#fdfbf3] dark:bg-stone-900 rounded-xl p-3 border border-stone-200/80 dark:border-stone-800/80 hover:border-amber-500 hover:shadow-lg transition cursor-pointer flex flex-col items-center justify-center gap-1 text-center"
                 >
                   <span class="text-sm font-bold font-serif-chinese text-stone-800 dark:text-stone-100">组 {{ group.indexInTier }}</span>
@@ -974,35 +974,56 @@
 
         // Memoized as a computed rather than a plain function called from the template:
         // the old version recomputed on every re-render regardless of whether
-        // charProgress had actually changed. Computes known-count once per group and
-        // derives both the "N / M" label and a 0–1 ratio from it, so the tile-coloring
-        // logic doesn't need a second pass over the same data.
+        // charProgress had actually changed. Tracks `attempted` separately from `known`
+        // so a group that's been fully practiced but entirely missed isn't visually
+        // indistinguishable from a group that's never been touched at all — both would
+        // otherwise land at ratio === 0.
         const groupProgressStats = computed(() => {
           return practiceGroups.value.map(group => {
             let known = 0;
+            let attempted = 0;
             for (const id of group.ids) {
-              if (charProgress.value[id] === 'known') known++;
+              const status = charProgress.value[id];
+              if (status === 'known') known++;
+              if (status === 'known' || status === 'unknown') attempted++;
             }
             return {
               label: `${known} / ${group.ids.length}`,
-              ratio: group.ids.length > 0 ? known / group.ids.length : 0
+              ratio: group.ids.length > 0 ? known / group.ids.length : 0,
+              attempted
             };
           });
         });
         const groupProgressList = computed(() => groupProgressStats.value.map(s => s.label));
 
-        // Tile styling for the group selector: a colored left border so mastered vs.
-        // partially-done vs. untouched groups are scannable at a glance instead of
-        // requiring the "N / M" badge to be read on every tile.
-        function groupTileClass(globalIndex) {
-          const ratio = groupProgressStats.value[globalIndex]?.ratio ?? 0;
-          if (ratio >= 1) {
-            return 'border-l-4 border-l-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20';
+        // Tile styling for the group selector: a colored left border + faint tint so
+        // mastered vs. partially-done vs. attempted-but-missed vs. untouched groups are
+        // all scannable at a glance. Uses inline :style rather than dynamically-returned
+        // Tailwind class strings — the tile already carries its own background/border
+        // classes (bg-[#fdfbf3], border-stone-200/80), and which of two same-specificity
+        // classes wins depends on the order the CDN JIT compiler happened to generate them
+        // in, which isn't guaranteed. Inline styles always win the cascade, so the color
+        // reliably renders regardless of that ordering.
+        const GROUP_STATUS_COLORS = {
+          mastered: { border: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },  // emerald-500
+          partial:  { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },  // amber-500
+          missed:   { border: '#f43f5e', bg: 'rgba(244, 63, 94, 0.12)' },   // rose-500
+          none:     { border: 'transparent', bg: 'transparent' }
+        };
+        function groupTileStyle(globalIndex) {
+          const stats = groupProgressStats.value[globalIndex];
+          let status = 'none';
+          if (stats) {
+            if (stats.ratio >= 1) status = 'mastered';
+            else if (stats.ratio > 0) status = 'partial';
+            else if (stats.attempted > 0) status = 'missed';
           }
-          if (ratio > 0) {
-            return 'border-l-4 border-l-amber-500 bg-amber-50/60 dark:bg-amber-950/20';
-          }
-          return 'border-l-4 border-l-transparent';
+          const colors = GROUP_STATUS_COLORS[status];
+          return {
+            borderLeftColor: colors.border,
+            borderLeftWidth: '4px',
+            backgroundColor: colors.bg
+          };
         }
 
         // Speech Synthesis Audio Player — low-level utterance primitive. Named `speak`
@@ -1474,7 +1495,7 @@
           gradeCard,
           resetPracticeStats,
           groupProgressList,
-          groupTileClass
+          groupTileStyle
         };
       }
     }).mount('#app');
