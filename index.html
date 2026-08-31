@@ -441,7 +441,7 @@
               <div class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">
                 {{ getTierLabel(tier) }} · 按组切分 (每组 30 字)
               </div>
-              <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
+              <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 xl:grid-cols-10 gap-3">
                 <div 
                   v-for="group in practiceGroupsByTier[tier]" 
                   :key="group.globalIndex"
@@ -452,7 +452,7 @@
                   tabindex="0"
                   :aria-label="`${group.tierLabel} 组 ${group.indexInTier}，第 ${group.start} 至 ${group.end} 字，进度 ${groupProgressList[group.globalIndex]}`"
                   :style="groupTileStyle(group.globalIndex)"
-                  class="group relative bg-[#fdfbf3] dark:bg-stone-900 rounded-2xl p-3 border border-stone-200/90 dark:border-stone-800/90 hover:border-amber-500/70 dark:hover:border-amber-500/70 hover:shadow-xl hover:shadow-amber-500/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center gap-1 aspect-square text-center"
+                  class="practice-tile group relative bg-[#fdfbf3] dark:bg-stone-900 rounded-2xl py-3 px-2 border border-stone-200/90 dark:border-stone-800/90 hover:shadow-xl hover:shadow-amber-500/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center gap-1 text-center"
                 >
                   <span class="text-base font-bold text-stone-800 dark:text-stone-100 group-hover:scale-110 transition-transform duration-200">组 {{ group.indexInTier }}</span>
                   <span class="text-xs font-mono text-stone-400">{{ group.start }}–{{ group.end }}</span>
