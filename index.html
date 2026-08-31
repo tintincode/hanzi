@@ -430,10 +430,15 @@
                   v-for="group in practiceGroupsByTier[tier]" 
                   :key="group.globalIndex"
                   @click="selectPracticeGroup(group.globalIndex)"
+                  @keydown.enter="selectPracticeGroup(group.globalIndex)"
+                  @keydown.space.prevent="selectPracticeGroup(group.globalIndex)"
+                  role="button"
+                  tabindex="0"
+                  :aria-label="`${group.tierLabel} 组 ${group.indexInTier}，第 ${group.start} 至 ${group.end} 字，进度 ${groupProgressList[group.globalIndex]}`"
                   :style="groupTileStyle(group.globalIndex)"
-                  class="bg-[#fdfbf3] dark:bg-stone-900 rounded-lg p-3 border border-stone-200/80 dark:border-stone-800/80 hover:border-amber-500 hover:shadow-lg transition cursor-pointer flex flex-col items-center justify-center gap-1 text-center"
+                  class="group relative bg-[#fdfbf3] dark:bg-stone-900 rounded-2xl p-3 border border-stone-200/90 dark:border-stone-800/90 hover:border-amber-500/70 dark:hover:border-amber-500/70 hover:shadow-xl hover:shadow-amber-500/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center gap-1 aspect-square text-center"
                 >
-                  <span class="text-sm font-bold font-serif-chinese text-stone-800 dark:text-stone-100">组 {{ group.indexInTier }}</span>
+                  <span class="text-sm font-bold text-stone-800 dark:text-stone-100 group-hover:scale-110 transition-transform duration-200">组 {{ group.indexInTier }}</span>
                   <span class="text-[11px] font-mono text-stone-400">{{ group.start }}–{{ group.end }}</span>
                   <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-semibold mt-0.5">
                     {{ groupProgressList[group.globalIndex] }}
@@ -1126,8 +1131,7 @@
         const GROUP_STATUS_COLORS = {
           mastered: { border: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },  // emerald-500
           partial:  { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },  // amber-500
-          missed:   { border: '#f43f5e', bg: 'rgba(244, 63, 94, 0.12)' },   // rose-500
-          none:     { border: 'transparent', bg: 'transparent' }
+          missed:   { border: '#f43f5e', bg: 'rgba(244, 63, 94, 0.12)' }    // rose-500
         };
         function groupTileStyle(globalIndex) {
           const stats = groupProgressStats.value[globalIndex];
@@ -1136,6 +1140,14 @@
             if (stats.ratio >= 1) status = 'mastered';
             else if (stats.ratio > 0) status = 'partial';
             else if (stats.attempted > 0) status = 'missed';
+          }
+          if (status === 'none') {
+            // Deliberately omit backgroundColor here rather than setting it to
+            // 'transparent': inline styles always win the cascade, so explicitly setting
+            // it would wipe out the tile's own bg-[#fdfbf3]/dark:bg-stone-900 class for
+            // every untouched tile — which, since most tiles start untouched, made the
+            // whole grid look flat/colorless rather than just skipping the accent.
+            return { borderLeftColor: 'transparent', borderLeftWidth: '4px' };
           }
           const colors = GROUP_STATUS_COLORS[status];
           return {
