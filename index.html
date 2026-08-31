@@ -66,6 +66,22 @@
       contain-intrinsic-size: 140px 140px;
     }
 
+    /* Practice-mode group tiles: --tile-accent is set inline per-tile (from
+       groupTileStyle()) for the resting mastery-status border color, but read here as an
+       actual stylesheet rule — rather than a direct inline color — specifically so the
+       :hover rule below can still win. Inline style values can't respond to pseudo-classes
+       at all, so a direct inline border-left-color would stay fixed through hover
+       regardless of state, leaving 3 sides highlighted amber and the 4th stuck at its
+       resting color. !important guards against Tailwind's JIT-generated border-color
+       utility winning purely due to injection order, since both are single-class
+       selectors of otherwise-equal specificity. */
+    .practice-tile {
+      border-left-color: var(--tile-accent, transparent) !important;
+    }
+    .practice-tile:hover {
+      border-color: #f59e0b !important; /* amber-500, all four sides uniformly on hover */
+    }
+
     /* Glassmorphism background effect */
     .glass-nav {
       backdrop-filter: blur(12px);
@@ -1141,12 +1157,12 @@
 
         // Tile styling for the group selector: a colored left border + faint tint so
         // mastered vs. partially-done vs. attempted-but-missed vs. untouched groups are
-        // all scannable at a glance. Uses inline :style rather than dynamically-returned
-        // Tailwind class strings — the tile already carries its own background/border
-        // classes (bg-[#fdfbf3], border-stone-200/80), and which of two same-specificity
-        // classes wins depends on the order the CDN JIT compiler happened to generate them
-        // in, which isn't guaranteed. Inline styles always win the cascade, so the color
-        // reliably renders regardless of that ordering.
+        // all scannable at a glance. Sets CSS custom properties rather than direct color
+        // values — the .practice-tile stylesheet rule (below) reads them for the resting
+        // state, but its own :hover rule can still win on hover. A direct inline color
+        // would permanently pin the left border regardless of hover, since inline styles
+        // have no concept of pseudo-classes — that's what caused hover to only highlight
+        // 3 of the tile's 4 sides instead of the whole border.
         const GROUP_STATUS_COLORS = {
           mastered: { border: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },  // emerald-500
           partial:  { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },  // amber-500
@@ -1161,19 +1177,15 @@
             else if (stats.attempted > 0) status = 'missed';
           }
           if (status === 'none') {
-            // Deliberately omit backgroundColor here rather than setting it to
-            // 'transparent': inline styles always win the cascade, so explicitly setting
-            // it would wipe out the tile's own bg-[#fdfbf3]/dark:bg-stone-900 class for
-            // every untouched tile — which, since most tiles start untouched, made the
-            // whole grid look flat/colorless rather than just skipping the accent.
-            return { borderLeftColor: 'transparent', borderLeftWidth: '4px' };
+            // No backgroundColor set here at all (not even 'transparent') so the tile's
+            // own bg-[#fdfbf3]/dark:bg-stone-900 class shows through normally for the
+            // common untouched case. Background isn't hover-dependent, so a direct inline
+            // value (guaranteed to win, no ordering ambiguity) is fine here — unlike the
+            // border color below, it doesn't need pseudo-class support.
+            return { '--tile-accent': 'transparent' };
           }
           const colors = GROUP_STATUS_COLORS[status];
-          return {
-            borderLeftColor: colors.border,
-            borderLeftWidth: '4px',
-            backgroundColor: colors.bg
-          };
+          return { '--tile-accent': colors.border, backgroundColor: colors.bg };
         }
 
         // Speech Synthesis Audio Player — low-level utterance primitive. Named `speak`
@@ -1260,9 +1272,23 @@
           return favoritesSet.value.has(id);
         }
 
+        // Resets the loaded-batch count after a filter/search change, and forces a fresh
+        // IntersectionObserver check afterward. This matters because the observer only
+        // fires on a *change* of intersection state (entering/leaving its zone) — if a
+        // narrow search already left the sentinel on-screen ("intersecting"), and the
+        // cleared/changed filter's new content still leaves it on-screen too, the state
+        // never actually flips, so no new callback fires and loading silently gets stuck
+        // at 90 forever. Disconnecting and re-observing forces a fresh evaluation of the
+        // sentinel's current position against the newly-rendered content, after nextTick
+        // so that content has actually rendered first.
+        function resetLoadedCount() {
+          loadedCount.value = 90;
+          nextTick(() => setupInfiniteScroll());
+        }
+
         function toggleFavoriteOnlyFilter() {
           onlyFavorites.value = !onlyFavorites.value;
-          loadedCount.value = 90;
+          resetLoadedCount();
         }
 
         function clearFavorites() {
@@ -1272,7 +1298,7 @@
 
         function setActiveTier(tier) {
           activeTier.value = tier;
-          loadedCount.value = 90;
+          resetLoadedCount();
         }
 
         function setAppMode(mode) {
@@ -1288,7 +1314,7 @@
           if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
           searchDebounceTimer = setTimeout(() => {
             debouncedSearchQuery.value = searchQuery.value;
-            loadedCount.value = 90;
+            resetLoadedCount();
           }, 150);
         }
 
@@ -1298,7 +1324,7 @@
           if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
           searchQuery.value = '';
           debouncedSearchQuery.value = '';
-          loadedCount.value = 90;
+          resetLoadedCount();
         }
 
         function resetToDefault() {
