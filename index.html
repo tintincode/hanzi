@@ -85,6 +85,15 @@
       opacity: 0;
       transform: translateX(-14px) scale(0.98);
     }
+
+    /* Scroll-to-top button fade */
+    .scroll-top-fade-enter-active, .scroll-top-fade-leave-active {
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .scroll-top-fade-enter-from, .scroll-top-fade-leave-to {
+      opacity: 0;
+      transform: translateY(8px);
+    }
   </style>
 </head>
 <body class="h-full bg-[#f2ecdf] text-stone-800 dark:bg-stone-950 dark:text-stone-100 antialiased selection:bg-amber-500 selection:text-white">
@@ -101,7 +110,7 @@
             汉
           </div>
           <h1 class="text-xl font-bold font-serif-chinese tracking-wide bg-gradient-to-r from-amber-200 via-stone-100 to-stone-300 bg-clip-text text-transparent hidden sm:block">
-            通用规范汉字表 <span class="text-xs tracking-normal font-sans px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">学习版</span>
+            通用规范汉字表
           </h1>
         </div>
 
@@ -723,6 +732,20 @@
 
       </div>
     </div>
+
+    <!-- SCROLL TO TOP: floating button, only visible once scrolled down meaningfully.
+         Fastest path back to the top of a long reading-mode scroll session. -->
+    <Transition name="scroll-top-fade">
+      <button
+        v-if="showScrollTopButton"
+        @click="scrollToTop"
+        aria-label="回到顶部"
+        title="回到顶部"
+        class="fixed bottom-6 right-6 z-30 w-12 h-12 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-900/30 flex items-center justify-center transition-colors"
+      >
+        <i class="ph ph-arrow-up text-xl"></i>
+      </button>
+    </Transition>
 
     <!-- CONFIRMATION MODAL: shared by any destructive action (clear favorites, reset
          practice records, etc.) so nothing irreversible fires from a single accidental
@@ -1527,11 +1550,22 @@
           }
         }
 
+        // Scroll-to-top button visibility: shown once the page has scrolled down enough
+        // that jumping back to the top by hand would take more than a moment.
+        const showScrollTopButton = ref(false);
+        function handleScroll() {
+          showScrollTopButton.value = window.scrollY > 600;
+        }
+        function scrollToTop() {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         // Lifecycle Hooks
         onMounted(() => {
           applyTheme();
           setupInfiniteScroll();
           window.addEventListener('keydown', handleKeyDown);
+          window.addEventListener('scroll', handleScroll, { passive: true });
 
           // Listen for system color theme changes
           window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
@@ -1544,6 +1578,7 @@
         onUnmounted(() => {
           if (observer) observer.disconnect();
           window.removeEventListener('keydown', handleKeyDown);
+          window.removeEventListener('scroll', handleScroll);
         });
 
         return {
@@ -1608,7 +1643,9 @@
           undoLastGrade,
           resetPracticeStats,
           groupProgressList,
-          groupTileStyle
+          groupTileStyle,
+          showScrollTopButton,
+          scrollToTop
         };
       }
     }).mount('#app');
