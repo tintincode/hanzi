@@ -109,7 +109,7 @@
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-serif-chinese font-bold text-2xl shadow-lg shadow-amber-900/20">
             汉
           </div>
-          <h1 class="text-xl font-bold font-serif-chinese tracking-wide bg-gradient-to-r from-amber-200 via-stone-100 to-stone-300 bg-clip-text text-transparent hidden sm:block">
+          <h1 class="text-2xl font-bold font-serif-chinese tracking-wide bg-gradient-to-r from-amber-200 via-stone-100 to-stone-300 bg-clip-text text-transparent hidden sm:block">
             通用规范汉字表
           </h1>
         </div>
@@ -267,7 +267,7 @@
         >
           <i class="ph-fill ph-star text-amber-500"></i>
           <span>只看收藏</span>
-          <span class="px-1.5 py-0.5 rounded-full bg-stone-200 dark:bg-stone-700 text-[10px] text-stone-700 dark:text-stone-200 font-bold">
+          <span class="px-1.5 py-0.5 rounded-full bg-stone-200 dark:bg-stone-700 text-xs text-stone-700 dark:text-stone-200 font-bold">
             {{ favorites.length }}
           </span>
         </button>
@@ -358,15 +358,15 @@
             class="hanzi-card group relative bg-[#fdfbf3] dark:bg-stone-900 rounded-2xl p-3 border border-stone-200/90 dark:border-stone-800/90 hover:border-amber-500/70 dark:hover:border-amber-500/70 hover:shadow-xl hover:shadow-amber-500/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition-all duration-200 cursor-pointer flex flex-col items-center justify-between aspect-square select-none overflow-hidden"
           >
             <!-- Top Card Header: Index ID & Favorite Star -->
-            <div class="w-full flex justify-between items-center text-[11px] text-stone-400 leading-none">
-              <span class="font-mono text-stone-400 dark:text-stone-500 text-[10px]">{{ item.id }}</span>
+            <div class="w-full flex justify-between items-center text-xs text-stone-400 leading-none">
+              <span class="font-mono text-stone-400 dark:text-stone-500 text-xs">{{ item.id }}</span>
 
               <!-- Polyphone Badge: flags characters with more than one reading, so the
                    single pinyin line below isn't mistaken for the only pronunciation. -->
               <span 
                 v-if="item.polyphone" 
                 :title="`多音字，共 ${item.polyphone} 个读音: ${item.pinyin}`"
-                class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                class="px-1.5 py-0.2 rounded text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
               >
                 多音
               </span>
@@ -438,9 +438,9 @@
                   :style="groupTileStyle(group.globalIndex)"
                   class="group relative bg-[#fdfbf3] dark:bg-stone-900 rounded-2xl p-3 border border-stone-200/90 dark:border-stone-800/90 hover:border-amber-500/70 dark:hover:border-amber-500/70 hover:shadow-xl hover:shadow-amber-500/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center gap-1 aspect-square text-center"
                 >
-                  <span class="text-sm font-bold text-stone-800 dark:text-stone-100 group-hover:scale-110 transition-transform duration-200">组 {{ group.indexInTier }}</span>
-                  <span class="text-[11px] font-mono text-stone-400">{{ group.start }}–{{ group.end }}</span>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-semibold mt-0.5">
+                  <span class="text-base font-bold text-stone-800 dark:text-stone-100 group-hover:scale-110 transition-transform duration-200">组 {{ group.indexInTier }}</span>
+                  <span class="text-xs font-mono text-stone-400">{{ group.start }}–{{ group.end }}</span>
+                  <span class="text-xs px-1.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-semibold mt-0.5">
                     {{ groupProgressList[group.globalIndex] }}
                   </span>
                 </div>
@@ -695,10 +695,10 @@
                 :aria-label="`单独朗读 ${reading}`"
                 class="font-pinyin px-2.5 py-1 rounded-full text-xs border bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:text-emerald-600 dark:hover:text-emerald-300 hover:border-emerald-500/60 transition flex items-center gap-1"
               >
-                <i class="ph ph-speaker-high text-[10px]"></i>{{ reading }}
+                <i class="ph ph-speaker-high text-xs"></i>{{ reading }}
               </button>
             </div>
-            <span class="text-[11px] text-stone-400 dark:text-stone-500">多音字，点击单个读音可单独朗读</span>
+            <span class="text-xs text-stone-400 dark:text-stone-500">多音字，点击单个读音可单独朗读</span>
           </div>
         </div>
 
@@ -857,7 +857,7 @@
             class="hidden" 
             @change="importProgress"
           />
-          <p v-if="importStatusMessage" class="text-[11px] mt-2" :class="importStatusIsError ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'">
+          <p v-if="importStatusMessage" class="text-xs mt-2" :class="importStatusIsError ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'">
             {{ importStatusMessage }}
           </p>
         </div>
@@ -1679,18 +1679,29 @@
             const entry = entries[0];
             if (entry.isIntersecting && !isLoadingMore.value) {
               if (loadedCount.value < filteredCharactersTotal.value) {
-                // The dataset is already fully in memory (no real network fetch happens
-                // here), so there's nothing to actually wait on. The previous artificial
-                // setTimeout delay just added a visible stutter on every batch for no
-                // benefit — append immediately instead.
+                // Guard against overlapping triggers: during fast scrolling, appending a
+                // batch shifts the sentinel's position, and with a large rootMargin it can
+                // still be within range immediately afterward — re-firing before Vue has
+                // even finished inserting the previous batch's DOM nodes. Without this
+                // flag, several batches could stack up almost simultaneously, which is
+                // what caused loads to stall/fail and the page to lag right after. The
+                // flag clears on the next animation frame (not a fixed delay) — just long
+                // enough for one paint cycle to settle, imperceptible at normal scroll
+                // speeds, but enough to stop a fast-scroll pile-up.
+                isLoadingMore.value = true;
                 loadedCount.value += 90;
+                requestAnimationFrame(() => {
+                  requestAnimationFrame(() => {
+                    isLoadingMore.value = false;
+                  });
+                });
               }
             }
           }, {
-            // A larger margin means the next batch renders well before the sentinel
-            // actually enters the viewport, so it's already there by the time you scroll
-            // down to it instead of popping in right at the edge.
-            rootMargin: '1000px'
+            // Generous enough to preload before the sentinel is actually visible, without
+            // being so large that a single fast scroll gesture re-crosses it repeatedly
+            // before the DOM has settled from the previous batch.
+            rootMargin: '500px'
           });
 
           if (infiniteScrollTrigger.value) {
