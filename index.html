@@ -512,6 +512,18 @@
                 <span>掌握了 (对 J)</span>
               </button>
             </div>
+
+            <!-- Undo: only shown right after a grade, so a mis-tap (e.g. meant 对, hit
+                 错) can be corrected instead of being stuck wrong for the rest of the
+                 round. Single-level — using it clears the ability to undo again. -->
+            <button
+              v-if="lastGrade"
+              @click="undoLastGrade"
+              class="w-full py-2 rounded-xl text-xs text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center justify-center gap-1.5 transition"
+            >
+              <i class="ph ph-arrow-u-up-left"></i>
+              <span>撤销上一题（{{ lastGrade.card.char }} 判定为{{ lastGrade.isCorrect ? '"认识"' : '"不认识"' }}）</span>
+            </button>
           </div>
 
           <div class="text-xs text-stone-400 flex items-center gap-4">
@@ -769,7 +781,7 @@
         <div class="text-xs space-y-3 text-stone-600 dark:text-stone-300 leading-relaxed">
           <p><strong>1. 通用规范汉字表说明：</strong> 本平台收录了国务院公布的《通用规范汉字表》共8105字，分为一级字表（3500字）、二级字表（3000字）及三级字表（1605字）。</p>
           <p><strong>2. 滚动加载：</strong> 阅读模式采用平滑流式加载，往下滚动即可自动载入后续汉字，带来丝滑的学习体验。</p>
-          <p><strong>3. 练习模式：</strong> 支持按 100 字分组背诵，支持按键 <kbd class="px-1 py-0.5 bg-stone-200 dark:bg-stone-800 rounded font-mono">J</kbd> (认识) 和 <kbd class="px-1 py-0.5 bg-stone-200 dark:bg-stone-800 rounded font-mono">K</kbd> (忘记) 快速刷字。</p>
+          <p><strong>3. 练习模式：</strong> 支持按 30 字分组背诵，支持按键 <kbd class="px-1 py-0.5 bg-stone-200 dark:bg-stone-800 rounded font-mono">J</kbd> (认识) 和 <kbd class="px-1 py-0.5 bg-stone-200 dark:bg-stone-800 rounded font-mono">K</kbd> (忘记) 快速刷字，误按后可点击"撤销"按钮改正。</p>
           <p><strong>4. 三态主题：</strong> 点击导航栏右上角主题按钮可在 ☀️ 浅色模式、🌙 深色模式 与 🖥️ 跟随系统 模式间无缝切换。</p>
         </div>
 
@@ -1337,6 +1349,7 @@
           practiceQueue.value = allCharacters.value.filter(c => idSet.has(c.id));
           roundMissedIds.value = [];
           roundSize.value = practiceQueue.value.length;
+          lastGrade.value = null;
           loadNextPracticeCard();
         }
 
@@ -1359,6 +1372,7 @@
           practiceQueue.value = allCharacters.value.filter(c => idSet.has(c.id));
           roundMissedIds.value = [];
           roundSize.value = practiceQueue.value.length;
+          lastGrade.value = null;
           loadNextPracticeCard();
         }
 
@@ -1382,6 +1396,7 @@
           practiceQueue.value = [];
           roundMissedIds.value = [];
           roundSize.value = 0;
+          lastGrade.value = null;
         }
 
         function persistPracticeStats() {
@@ -1391,9 +1406,16 @@
           safeLocalStorageSet('hanzi_char_progress', charProgress.value);
         }
 
+        // Single-level undo: if the last answer was graded wrong by mistake (e.g. meant
+        // to press J but hit K), this lets it be corrected instead of being stuck wrong
+        // for the rest of the session. Cleared whenever a new round/group starts so it
+        // can't reach across sessions.
+        const lastGrade = ref(null);
+
         function gradeCard(isCorrect) {
           if (!currentPracticeCard.value) return;
           const card = currentPracticeCard.value;
+          const prevProgress = charProgress.value[card.id]; // undefined if never graded before
 
           if (isCorrect) {
             practiceStats.value.correct++;
@@ -1408,11 +1430,42 @@
 
           persistPracticeStats();
 
+          lastGrade.value = { card, isCorrect, prevProgress };
+
           // Remove the current card from the front of the queue — cards are never
           // requeued mid-pass, so the queue is guaranteed to empty after exactly
           // roundSize grades.
           practiceQueue.value.shift();
           loadNextPracticeCard();
+        }
+
+        // Reverts the most recent grade: puts the card back at the front of the queue,
+        // rolls back the stat counters and mastery record to what they were before that
+        // grade, and removes it from roundMissedIds if it had just been added there.
+        function undoLastGrade() {
+          if (!lastGrade.value) return;
+          const { card, isCorrect, prevProgress } = lastGrade.value;
+
+          if (isCorrect) {
+            practiceStats.value.correct--;
+          } else {
+            practiceStats.value.wrong--;
+            const idx = roundMissedIds.value.lastIndexOf(card.id);
+            if (idx > -1) roundMissedIds.value.splice(idx, 1);
+          }
+          practiceStats.value.completed--;
+
+          if (prevProgress === undefined) {
+            delete charProgress.value[card.id];
+          } else {
+            charProgress.value[card.id] = prevProgress;
+          }
+          persistPracticeStats();
+
+          practiceQueue.value.unshift(card);
+          currentPracticeCard.value = card;
+          isPinyinRevealed.value = false;
+          lastGrade.value = null; // single-level: once used, it's gone
         }
 
         function resetPracticeStats() {
@@ -1551,6 +1604,8 @@
           charProgress,
           knownCharCount,
           gradeCard,
+          lastGrade,
+          undoLastGrade,
           resetPracticeStats,
           groupProgressList,
           groupTileStyle
