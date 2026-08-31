@@ -336,7 +336,7 @@
         </div>
 
         <!-- Hanzi Cards Grid -->
-        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-3.5">
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-9 gap-3">
           <div 
             v-for="item in visibleCharacters" 
             :key="item.id"
@@ -416,17 +416,17 @@
               <div class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">
                 {{ getTierLabel(tier) }} · 按组切分 (每组 30 字)
               </div>
-              <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+              <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
                 <div 
                   v-for="group in practiceGroupsByTier[tier]" 
                   :key="group.globalIndex"
                   @click="selectPracticeGroup(group.globalIndex)"
                   :style="groupTileStyle(group.globalIndex)"
-                  class="bg-[#fdfbf3] dark:bg-stone-900 rounded-xl p-3 border border-stone-200/80 dark:border-stone-800/80 hover:border-amber-500 hover:shadow-lg transition cursor-pointer flex flex-col items-center justify-center gap-1 text-center"
+                  class="bg-[#fdfbf3] dark:bg-stone-900 rounded-lg p-3 border border-stone-200/80 dark:border-stone-800/80 hover:border-amber-500 hover:shadow-lg transition cursor-pointer flex flex-col items-center justify-center gap-1 text-center"
                 >
                   <span class="text-sm font-bold font-serif-chinese text-stone-800 dark:text-stone-100">组 {{ group.indexInTier }}</span>
                   <span class="text-[11px] font-mono text-stone-400">{{ group.start }}–{{ group.end }}</span>
-                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-semibold mt-1">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-semibold mt-0.5">
                     {{ groupProgressList[group.globalIndex] }}
                   </span>
                 </div>
