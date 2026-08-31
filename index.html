@@ -808,6 +808,36 @@
           <p><strong>4. 三态主题：</strong> 点击导航栏右上角主题按钮可在 ☀️ 浅色模式、🌙 深色模式 与 🖥️ 跟随系统 模式间无缝切换。</p>
         </div>
 
+        <!-- Data backup: export/import favorites + practice progress as a JSON file,
+             so learning history isn't trapped in one browser's localStorage. -->
+        <div class="pt-3 border-t border-stone-200 dark:border-stone-800">
+          <div class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">学习记录备份</div>
+          <div class="flex gap-2">
+            <button 
+              @click="exportProgress" 
+              class="flex-1 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium flex items-center justify-center gap-1.5 transition"
+            >
+              <i class="ph ph-download-simple"></i> 导出记录
+            </button>
+            <button 
+              @click="triggerImportProgress" 
+              class="flex-1 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium flex items-center justify-center gap-1.5 transition"
+            >
+              <i class="ph ph-upload-simple"></i> 导入记录
+            </button>
+          </div>
+          <input 
+            ref="importFileInput" 
+            type="file" 
+            accept="application/json" 
+            class="hidden" 
+            @change="importProgress"
+          />
+          <p v-if="importStatusMessage" class="text-[11px] mt-2" :class="importStatusIsError ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'">
+            {{ importStatusMessage }}
+          </p>
+        </div>
+
         <button 
           @click="showHelpModal = false" 
           class="mt-2 w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition"
@@ -1497,6 +1527,93 @@
           persistPracticeStats();
         }
 
+        // Data backup: export/import favorites + practice progress as a downloadable
+        // JSON file, so a person's learning history isn't permanently trapped in one
+        // browser's localStorage (which is lost on cache-clear, private browsing, or
+        // simply switching devices).
+        const importFileInput = ref(null);
+        const importStatusMessage = ref('');
+        const importStatusIsError = ref(false);
+
+        function exportProgress() {
+          const payload = {
+            exportedAt: new Date().toISOString(),
+            version: 1,
+            favorites: favorites.value,
+            charProgress: charProgress.value,
+            practiceStats: practiceStats.value
+          };
+          try {
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0, 10);
+            a.href = url;
+            a.download = `hanzi-progress-${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            importStatusIsError.value = false;
+            importStatusMessage.value = '已导出学习记录文件。';
+          } catch (e) {
+            console.warn('Export failed:', e);
+            importStatusIsError.value = true;
+            importStatusMessage.value = '导出失败，请重试。';
+          }
+        }
+
+        function triggerImportProgress() {
+          importStatusMessage.value = '';
+          importFileInput.value?.click();
+        }
+
+        function importProgress(event) {
+          const file = event.target.files?.[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const data = JSON.parse(reader.result);
+              // Validate shape before touching any real state, so a malformed or
+              // unrelated JSON file can't partially corrupt existing progress.
+              if (!data || typeof data !== 'object' || !Array.isArray(data.favorites) || typeof data.charProgress !== 'object') {
+                throw new Error('Unrecognized file format');
+              }
+
+              favorites.value = data.favorites.filter(id => Number.isInteger(id));
+              charProgress.value = data.charProgress;
+              if (data.practiceStats && typeof data.practiceStats === 'object') {
+                practiceStats.value = {
+                  completed: Number(data.practiceStats.completed) || 0,
+                  correct: Number(data.practiceStats.correct) || 0,
+                  wrong: Number(data.practiceStats.wrong) || 0
+                };
+              }
+
+              safeLocalStorageSet('hanzi_favorites', favorites.value);
+              persistPracticeStats();
+
+              importStatusIsError.value = false;
+              importStatusMessage.value = '导入成功，学习记录已更新。';
+            } catch (e) {
+              console.warn('Import failed:', e);
+              importStatusIsError.value = true;
+              importStatusMessage.value = '导入失败：文件格式不正确。';
+            } finally {
+              // Allow re-selecting the same filename later.
+              event.target.value = '';
+            }
+          };
+          reader.onerror = () => {
+            importStatusIsError.value = true;
+            importStatusMessage.value = '读取文件失败，请重试。';
+            event.target.value = '';
+          };
+          reader.readAsText(file);
+        }
+
         // Keyboard navigation setup
         function handleKeyDown(e) {
           if (appMode.value === 'practice' && currentPracticeCard.value) {
@@ -1645,7 +1762,13 @@
           groupProgressList,
           groupTileStyle,
           showScrollTopButton,
-          scrollToTop
+          scrollToTop,
+          importFileInput,
+          importStatusMessage,
+          importStatusIsError,
+          exportProgress,
+          triggerImportProgress,
+          importProgress
         };
       }
     }).mount('#app');
