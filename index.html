@@ -23,6 +23,16 @@
        has an effect (system mode "worked" before only because it IS the media query). -->
   <style type="text/tailwindcss">
     @variant dark (&:where(.dark, .dark *));
+
+    /* Bespoke warm-parchment palette (no equivalent in Tailwind's default color scale, so
+       these genuinely need custom values — unlike the earlier text-size situation, there's
+       no "already standard" token to fall back to). Named here once rather than repeated
+       as raw bg-[#...] arbitrary values in a dozen places, so the whole palette can be
+       adjusted from a single definition instead of a find-and-replace across the file. */
+    @theme {
+      --color-parchment: #f2ecdf;      /* page background */
+      --color-parchment-card: #fdfbf3; /* raised card/modal/tile background */
+    }
   </style>
 
   <style>
@@ -112,7 +122,7 @@
     }
   </style>
 </head>
-<body class="h-full bg-[#f2ecdf] text-stone-800 dark:bg-stone-950 dark:text-stone-100 antialiased selection:bg-amber-500 selection:text-white">
+<body class="h-full bg-parchment text-stone-800 dark:bg-stone-950 dark:text-stone-100 antialiased selection:bg-amber-500 selection:text-white">
 
   <div id="app" class="min-h-full flex flex-col">
 
@@ -193,7 +203,7 @@
               type="text" 
               v-model="searchQuery" 
               placeholder="搜索汉字、拼音或序号 (例: 一, yi, #1)..." 
-              class="w-full pl-10 pr-10 py-2.5 sm:py-2 bg-stone-800/80 border border-stone-700/70 rounded-full text-sm text-stone-100 placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition"
+              class="w-full pl-10 pr-10 py-2.5 sm:py-2 bg-stone-800/80 border border-stone-700/70 rounded-full text-base sm:text-sm text-stone-100 placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition"
               @input="onSearchInput"
             />
             <button 
@@ -218,7 +228,7 @@
            placeholder there). Practice mode shows session navigation on the left and the
            mastery progress + reset on the right, replacing what used to be a second,
            separate toolbar card underneath this one. -->
-      <div v-if="appMode === 'reading'" class="bg-[#fdfbf3] dark:bg-stone-900 rounded-2xl p-4 shadow-sm border border-stone-200/80 dark:border-stone-800/80 transition min-h-[68px] flex flex-wrap items-center justify-end gap-2">
+      <div v-if="appMode === 'reading'" class="bg-parchment-card dark:bg-stone-900 rounded-2xl p-4 shadow-sm border border-stone-200/80 dark:border-stone-800/80 transition min-h-[68px] flex flex-wrap items-center justify-end gap-2">
 
         <!-- Tier & Classification Filter Buttons -->
         <button 
@@ -300,7 +310,7 @@
 
       </div>
 
-      <div v-else-if="appMode === 'practice'" class="bg-[#fdfbf3] dark:bg-stone-900 rounded-2xl p-4 shadow-sm border border-stone-200/80 dark:border-stone-800/80 transition min-h-[68px] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div v-else-if="appMode === 'practice'" class="bg-parchment-card dark:bg-stone-900 rounded-2xl p-4 shadow-sm border border-stone-200/80 dark:border-stone-800/80 transition min-h-[68px] flex flex-col md:flex-row md:items-center justify-between gap-4">
 
         <!-- Left: session navigation / status -->
         <div class="flex items-center gap-2 text-xs font-medium">
@@ -371,7 +381,7 @@
             role="button"
             tabindex="0"
             :aria-label="`汉字 ${item.char}，拼音 ${item.pinyin}，第 ${item.id} 号，点击查看详情`"
-            class="hanzi-card group relative bg-[#fdfbf3] dark:bg-stone-900 rounded-2xl p-3 border border-stone-200/90 dark:border-stone-800/90 hover:border-amber-500/70 dark:hover:border-amber-500/70 hover:shadow-xl hover:shadow-amber-500/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition-all duration-200 cursor-pointer flex flex-col items-center justify-between aspect-square select-none overflow-hidden"
+            class="hanzi-card group relative bg-parchment-card dark:bg-stone-900 rounded-2xl p-3 border border-stone-200/90 dark:border-stone-800/90 hover:border-amber-500/70 dark:hover:border-amber-500/70 hover:shadow-xl hover:shadow-amber-500/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition-all duration-200 cursor-pointer flex flex-col items-center justify-between aspect-square select-none overflow-hidden"
           >
             <!-- Top Card Header: Index ID & Favorite Star -->
             <div class="w-full flex justify-between items-center text-xs text-stone-400 leading-none">
@@ -452,9 +462,18 @@
                   tabindex="0"
                   :aria-label="`${group.tierLabel} 组 ${group.indexInTier}，第 ${group.start} 至 ${group.end} 字，进度 ${groupProgressList[group.globalIndex]}`"
                   :style="groupTileStyle(group.globalIndex)"
-                  class="practice-tile group relative bg-[#fdfbf3] dark:bg-stone-900 rounded-2xl py-3 px-2 border border-stone-200/90 dark:border-stone-800/90 hover:shadow-xl hover:shadow-amber-500/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center gap-1 text-center"
+                  class="practice-tile group relative bg-parchment-card dark:bg-stone-900 rounded-2xl py-3 px-2 border border-stone-200/90 dark:border-stone-800/90 hover:shadow-xl hover:shadow-amber-500/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center gap-1 text-center"
                 >
-                  <span class="text-base font-bold text-stone-800 dark:text-stone-100 group-hover:scale-110 transition-transform duration-200">组 {{ group.indexInTier }}</span>
+                  <button
+                    v-if="hasGroupHistory(group.globalIndex)"
+                    @click.stop="openHistoryPopover(group.globalIndex)"
+                    :aria-label="`查看组 ${group.indexInTier} 的练习历史`"
+                    title="查看练习历史"
+                    class="absolute top-1 right-1 w-5 h-5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/10 flex items-center justify-center transition"
+                  >
+                    <i class="ph ph-chart-line-up text-xs"></i>
+                  </button>
+                  <span class="text-sm font-bold text-stone-800 dark:text-stone-100 group-hover:scale-110 transition-transform duration-200">组 {{ group.indexInTier }}</span>
                   <span class="text-xs font-mono text-stone-400">{{ group.start }}–{{ group.end }}</span>
                   <span class="text-xs px-1.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 font-semibold mt-0.5">
                     {{ groupProgressList[group.globalIndex] }}
@@ -470,7 +489,7 @@
           
           <!-- Card Container -->
           <div 
-            class="w-full bg-[#fdfbf3] dark:bg-stone-900 rounded-3xl p-8 border-2 border-stone-200/90 dark:border-stone-800/90 shadow-2xl flex flex-col items-center justify-between min-h-[380px] relative overflow-hidden transition-all duration-300"
+            class="w-full bg-parchment-card dark:bg-stone-900 rounded-3xl p-8 border-2 border-stone-200/90 dark:border-stone-800/90 shadow-2xl flex flex-col items-center justify-between min-h-[380px] relative overflow-hidden transition-all duration-300"
           >
             <!-- Card Header info: live tally for this round, updates as you grade cards -->
             <div class="w-full flex justify-between items-center text-xs">
@@ -585,7 +604,7 @@
 
         <!-- 2C. ROUND COMPLETE SUMMARY (group chosen, but no card left in this pass) -->
         <div v-else-if="selectedPracticeGroup !== null" class="max-w-xl mx-auto w-full flex flex-col items-center gap-6 py-12">
-          <div class="w-full bg-[#fdfbf3] dark:bg-stone-900 rounded-3xl p-8 border-2 border-stone-200/90 dark:border-stone-800/90 shadow-2xl flex flex-col items-center gap-5 text-center">
+          <div class="w-full bg-parchment-card dark:bg-stone-900 rounded-3xl p-8 border-2 border-stone-200/90 dark:border-stone-800/90 shadow-2xl flex flex-col items-center gap-5 text-center">
             <i 
               :class="[roundMissedIds.length === 0 ? 'ph-fill ph-trophy text-amber-500' : 'ph-fill ph-flag-checkered text-amber-500', 'text-5xl']"
             ></i>
@@ -598,6 +617,16 @@
                 <span v-if="roundMissedIds.length > 0">，还有 {{ roundMissedIds.length }} 字需要复习</span>
               </div>
             </div>
+
+            <!-- Accuracy trend for this group across past attempts, so it's clear
+                 whether you're actually improving on it over time — not just a single
+                 snapshot of this round. -->
+            <history-trend-chart
+              v-if="getGroupHistory(selectedPracticeGroup).length > 1"
+              :history="getGroupHistory(selectedPracticeGroup)"
+              :trend="getHistoryTrend(selectedPracticeGroup)"
+              class="pt-1"
+            />
 
             <div class="w-full flex flex-col gap-3 pt-2">
               <div class="w-full flex flex-col sm:flex-row gap-3">
@@ -642,7 +671,7 @@
       aria-modal="true"
       :aria-label="`${selectedModalChar.char} 详情`"
     >
-      <div class="relative w-full max-w-lg bg-[#fdfbf3] dark:bg-stone-900 text-stone-800 dark:text-stone-100 rounded-3xl p-6 sm:p-8 border border-stone-200 dark:border-stone-800 shadow-2xl flex flex-col items-center gap-6 overflow-hidden">
+      <div class="relative w-full max-w-lg bg-parchment-card dark:bg-stone-900 text-stone-800 dark:text-stone-100 rounded-3xl p-6 sm:p-8 border border-stone-200 dark:border-stone-800 shadow-2xl flex flex-col items-center gap-6 overflow-hidden">
         
         <!-- Top Modal Controls -->
         <div class="w-full flex justify-between items-center text-xs text-stone-500 dark:text-stone-400">
@@ -668,7 +697,7 @@
 
         <!-- Real animated stroke-order box (HanziWriter), with static-character fallback
              for the rare glyphs the stroke-data CDN doesn't have. -->
-        <div class="relative w-48 h-48 rounded-2xl bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 flex items-center justify-center overflow-hidden group shadow-inner">
+        <div class="relative w-48 h-48 rounded-2xl bg-stone-100 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 flex items-center justify-center overflow-hidden group shadow-inner">
           
           <!-- Tianzige grid overlay background -->
           <svg class="absolute inset-0 w-full h-full text-stone-300/50 dark:text-stone-800/40" viewBox="0 0 100 100">
@@ -729,7 +758,7 @@
         </button>
 
         <!-- Definition & Example Phrases -->
-        <div class="w-full bg-stone-50 dark:bg-stone-950/60 rounded-xl p-4 border border-stone-200 dark:border-stone-800/80 text-xs text-stone-600 dark:text-stone-300 space-y-2">
+        <div class="w-full bg-stone-100 dark:bg-stone-950/60 rounded-xl p-4 border border-stone-200 dark:border-stone-800/80 text-xs text-stone-600 dark:text-stone-300 space-y-2">
           <div class="flex justify-between">
             <span class="text-stone-500 dark:text-stone-500">字级归属:</span>
             <span class="font-medium text-amber-600 dark:text-amber-400">{{ getTierLabel(selectedModalChar.tier) }}</span>
@@ -787,6 +816,34 @@
       </button>
     </Transition>
 
+    <!-- GROUP HISTORY POPOVER: opened from a tile's history icon, independent of
+         whichever group is actively selected/being practiced. -->
+    <div 
+      v-if="historyPopoverGroupIdx !== null" 
+      class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      @click.self="closeHistoryPopover"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="w-full max-w-sm bg-parchment-card dark:bg-stone-900 rounded-2xl p-5 border border-stone-200 dark:border-stone-800 shadow-2xl flex flex-col gap-3">
+        <div class="flex justify-between items-center">
+          <div class="font-bold text-sm text-stone-800 dark:text-stone-100" v-if="practiceGroups[historyPopoverGroupIdx]">
+            {{ practiceGroups[historyPopoverGroupIdx].tierLabel }} · 组 {{ practiceGroups[historyPopoverGroupIdx].indexInTier }}
+            <span class="font-mono text-xs text-stone-400 font-normal ml-1">
+              ({{ practiceGroups[historyPopoverGroupIdx].start }}–{{ practiceGroups[historyPopoverGroupIdx].end }})
+            </span>
+          </div>
+          <button @click="closeHistoryPopover" aria-label="关闭" class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200">
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+        <history-trend-chart
+          :history="getGroupHistory(historyPopoverGroupIdx)"
+          :trend="getHistoryTrend(historyPopoverGroupIdx)"
+        />
+      </div>
+    </div>
+
     <!-- CONFIRMATION MODAL: shared by any destructive action (clear favorites, reset
          practice records, etc.) so nothing irreversible fires from a single accidental
          click. -->
@@ -798,7 +855,7 @@
       aria-modal="true"
       :aria-label="confirmDialog.title"
     >
-      <div class="w-full max-w-sm bg-[#fdfbf3] dark:bg-stone-900 rounded-2xl p-6 border border-stone-200 dark:border-stone-800 shadow-2xl flex flex-col gap-4">
+      <div class="w-full max-w-sm bg-parchment-card dark:bg-stone-900 rounded-2xl p-6 border border-stone-200 dark:border-stone-800 shadow-2xl flex flex-col gap-4">
         <div class="flex items-start gap-3">
           <div class="shrink-0 w-9 h-9 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center">
             <i class="ph ph-warning text-lg"></i>
@@ -831,7 +888,7 @@
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
       @click.self="showHelpModal = false"
     >
-      <div class="max-w-md w-full bg-[#fdfbf3] dark:bg-stone-900 rounded-3xl p-6 border border-stone-200 dark:border-stone-800 shadow-2xl flex flex-col gap-4 text-stone-800 dark:text-stone-200">
+      <div class="max-w-md w-full bg-parchment-card dark:bg-stone-900 rounded-3xl p-6 border border-stone-200 dark:border-stone-800 shadow-2xl flex flex-col gap-4 text-stone-800 dark:text-stone-200">
         <div class="flex justify-between items-center">
           <h3 class="text-lg font-bold font-serif-chinese flex items-center gap-2">
             <i class="ph ph-info text-amber-500"></i> 使用说明
@@ -926,6 +983,70 @@
       return REAL_HANZI_DATASET;
     }
 
+    // Small reusable component for the accuracy-trend bar chart, shared by both the
+    // round-complete screen and the tile history popover so the same visualization
+    // logic/markup isn't duplicated in two places.
+    const HistoryTrendChart = {
+      props: { history: { type: Array, default: () => [] }, trend: { type: Number, default: null } },
+      computed: {
+        // Most recent attempt first, so it's visible without scrolling.
+        reversedHistory() {
+          return this.history.slice().reverse();
+        }
+      },
+      methods: {
+        formatWhen(t) {
+          const d = new Date(t);
+          const now = new Date();
+          const sameDay = d.toDateString() === now.toDateString();
+          const datePart = sameDay ? '今天' : (d.getMonth() + 1) + '/' + d.getDate();
+          const timePart = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+          return datePart + ' ' + timePart;
+        },
+        accuracyClass(accuracy) {
+          if (accuracy >= 90) return 'text-emerald-600 dark:text-emerald-400';
+          if (accuracy >= 60) return 'text-amber-600 dark:text-amber-400';
+          return 'text-rose-500';
+        }
+      },
+      template: `
+        <div v-if="history.length > 1" class="w-full">
+          <div class="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-1.5 flex items-center justify-between">
+            <span>历史练习记录（{{ history.length }} 次）</span>
+            <span
+              v-if="trend !== null && trend !== 0"
+              :class="trend > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"
+              class="font-bold"
+            >
+              {{ trend > 0 ? '↑' : '↓' }} 较上次 {{ Math.abs(trend) }}%
+            </span>
+            <span v-else-if="trend === 0" class="text-stone-400">与上次持平</span>
+          </div>
+          <!-- Scrollable list, one line per attempt, most recent first. Simpler to read
+               at a glance than a bar/line chart — exact date, score, and accuracy % are
+               all directly legible instead of needing to hover or eyeball bar heights. -->
+          <div class="w-full max-h-40 overflow-y-auto bg-stone-100 dark:bg-stone-950/50 rounded-lg divide-y divide-stone-200 dark:divide-stone-800">
+            <div
+              v-for="(entry, idx) in reversedHistory"
+              :key="entry.t"
+              class="flex items-center justify-between px-3 py-1.5 text-xs"
+              :class="idx === 0 ? 'bg-amber-500/5' : ''"
+            >
+              <span class="text-stone-400 font-mono">{{ formatWhen(entry.t) }}</span>
+              <span class="text-stone-500 dark:text-stone-400 font-mono">{{ entry.c }}/{{ entry.n }}</span>
+              <span class="font-bold w-10 text-right" :class="accuracyClass(entry.accuracy)">{{ entry.accuracy }}%</span>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="history.length === 1" class="w-full text-center text-xs text-stone-400 py-2">
+          仅一次练习记录（{{ history[0].accuracy }}%），再次练习后可查看趋势
+        </div>
+        <div v-else class="w-full text-center text-xs text-stone-400 py-2">
+          暂无练习记录
+        </div>
+      `
+    };
+
     const app = createApp({
       setup() {
         // App State
@@ -961,6 +1082,67 @@
         // Per-character mastery: { [charId]: 'known' | 'unknown' }, persisted so group progress
         // and future "review mistakes" views reflect real history instead of a hardcoded stub.
         const charProgress = ref(safeLocalStorageGet('hanzi_char_progress', {}));
+
+        // Per-group attempt history: { [groupGlobalIndex]: [{ t: timestamp, c: correct, n: total }] }.
+        // One entry per completed round (initial pass or a review-missed sub-round), so
+        // the round-complete screen can show an accuracy trend for that specific group
+        // over time, not just a single snapshot. Capped per group to avoid unbounded
+        // localStorage growth over a long usage history.
+        const MAX_HISTORY_PER_GROUP = 50;
+        const groupHistory = ref(safeLocalStorageGet('hanzi_group_history', {}));
+
+        function recordRoundHistory(groupIdx, correct, total) {
+          if (groupIdx === null || total <= 0) return;
+          const key = String(groupIdx);
+          const list = (groupHistory.value[key] || []).slice();
+          list.push({ t: Date.now(), c: correct, n: total });
+          if (list.length > MAX_HISTORY_PER_GROUP) {
+            list.splice(0, list.length - MAX_HISTORY_PER_GROUP);
+          }
+          // Reassign the whole object (rather than mutating the nested array in place) so
+          // Vue's reactivity reliably picks up the change regardless of how deep it is.
+          groupHistory.value = { ...groupHistory.value, [key]: list };
+          safeLocalStorageSet('hanzi_group_history', groupHistory.value);
+        }
+
+        // History for a given group, with accuracy % precomputed, most recent last.
+        // Shows everything stored (up to MAX_HISTORY_PER_GROUP) rather than truncating
+        // further for display, so a longer practice history is actually visible instead
+        // of only ever showing the most recent 8 attempts. Parametrized rather than tied
+        // to a single ref, since this now powers both the round-complete screen (for
+        // whichever group you just finished) and the tile popover (for whichever group
+        // you tap the history icon on).
+        function getGroupHistory(groupIdx) {
+          if (groupIdx === null || groupIdx === undefined) return [];
+          const list = groupHistory.value[String(groupIdx)] || [];
+          return list.map(entry => ({
+            ...entry,
+            accuracy: Math.round((entry.c / entry.n) * 100)
+          }));
+        }
+
+        // Difference vs. the previous attempt's accuracy, for a quick "improving or not"
+        // signal. Null if there's no prior attempt to compare against.
+        function getHistoryTrend(groupIdx) {
+          const list = getGroupHistory(groupIdx);
+          if (list.length < 2) return null;
+          return list[list.length - 1].accuracy - list[list.length - 2].accuracy;
+        }
+
+        function hasGroupHistory(groupIdx) {
+          return !!(groupHistory.value[String(groupIdx)] && groupHistory.value[String(groupIdx)].length > 0);
+        }
+
+        // Which group's history popover is currently open (tile icon), independent of
+        // whichever group is actively selected/being practiced.
+        const historyPopoverGroupIdx = ref(null);
+        function openHistoryPopover(groupIdx) {
+          historyPopoverGroupIdx.value = groupIdx;
+        }
+        function closeHistoryPopover() {
+          historyPopoverGroupIdx.value = null;
+        }
+
         // Unique characters marked 'known' — used for the practice-mode mastery bar so
         // requeued wrong-card retries don't inflate the number the way a raw attempt
         // counter would.
@@ -1178,7 +1360,7 @@
           }
           if (status === 'none') {
             // No backgroundColor set here at all (not even 'transparent') so the tile's
-            // own bg-[#fdfbf3]/dark:bg-stone-900 class shows through normally for the
+            // own bg-parchment-card/dark:bg-stone-900 class shows through normally for the
             // common untouched case. Background isn't hover-dependent, so a direct inline
             // value (guaranteed to win, no ordering ambiguity) is fine here — unlike the
             // border color below, it doesn't need pseudo-class support.
@@ -1468,9 +1650,20 @@
             currentPracticeCard.value = practiceQueue.value[0];
             isPinyinRevealed.value = false;
           } else {
-            // Pass finished. Leave selectedPracticeGroup set so the round-summary view
-            // (with the "review missed cards" option) can render instead of jumping
-            // straight back to the group list.
+            // Pass finished — log this round's accuracy to the group's history before
+            // showing the round-summary view. roundMissedIds/roundSize still reflect the
+            // round that just ended at this point (they aren't reset until the next round
+            // starts), so this captures exactly this pass's result.
+            if (selectedPracticeGroup.value !== null && roundSize.value > 0) {
+              recordRoundHistory(
+                selectedPracticeGroup.value,
+                roundSize.value - roundMissedIds.value.length,
+                roundSize.value
+              );
+            }
+            // Leave selectedPracticeGroup set so the round-summary view (with the
+            // "review missed cards" option) can render instead of jumping straight back
+            // to the group list.
             currentPracticeCard.value = null;
           }
         }
@@ -1581,6 +1774,8 @@
         function resetPracticeStats() {
           practiceStats.value = { completed: 0, correct: 0, wrong: 0 };
           charProgress.value = {};
+          groupHistory.value = {};
+          safeLocalStorageSet('hanzi_group_history', {});
           persistPracticeStats();
         }
 
@@ -1595,10 +1790,11 @@
         function exportProgress() {
           const payload = {
             exportedAt: new Date().toISOString(),
-            version: 1,
+            version: 2,
             favorites: favorites.value,
             charProgress: charProgress.value,
-            practiceStats: practiceStats.value
+            practiceStats: practiceStats.value,
+            groupHistory: groupHistory.value
           };
           try {
             const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -1647,6 +1843,12 @@
                   correct: Number(data.practiceStats.correct) || 0,
                   wrong: Number(data.practiceStats.wrong) || 0
                 };
+              }
+              // groupHistory is optional — older export files (version 1) won't have it,
+              // and that's fine, it just means no trend history comes back with them.
+              if (data.groupHistory && typeof data.groupHistory === 'object') {
+                groupHistory.value = data.groupHistory;
+                safeLocalStorageSet('hanzi_group_history', groupHistory.value);
               }
 
               safeLocalStorageSet('hanzi_favorites', favorites.value);
@@ -1823,6 +2025,12 @@
           practiceStats,
           charProgress,
           knownCharCount,
+          getGroupHistory,
+          getHistoryTrend,
+          hasGroupHistory,
+          historyPopoverGroupIdx,
+          openHistoryPopover,
+          closeHistoryPopover,
           gradeCard,
           lastGrade,
           undoLastGrade,
@@ -1839,7 +2047,9 @@
           importProgress
         };
       }
-    }).mount('#app');
+    })
+      .component('history-trend-chart', HistoryTrendChart)
+      .mount('#app');
   </script>
 </body>
 </html>
