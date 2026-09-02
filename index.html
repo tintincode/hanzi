@@ -42,6 +42,18 @@
       transition: background-color 0.3s ease, color 0.3s ease;
     }
 
+    /* iOS Safari's default double-tap-to-zoom gesture can trigger accidentally on rapid
+       taps — e.g. quickly grading flashcards with 不认识/掌握了, or fast-tapping through
+       character cards. `touch-action: manipulation` tells the browser these elements
+       only need single-tap interaction, so it responds immediately instead of waiting to
+       see if a double-tap-zoom gesture is happening. This only affects tap behavior on
+       these specific elements — it doesn't touch the viewport's pinch-zoom capability
+       (no user-scalable=no), so zooming elsewhere in the app for readability still works
+       normally. */
+    button, [role="button"], a {
+      touch-action: manipulation;
+    }
+
     .font-serif-chinese {
       font-family: 'Noto Serif SC', serif;
     }
