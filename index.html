@@ -54,6 +54,18 @@
       touch-action: manipulation;
     }
 
+    /* Keyboard-shortcut hints (J/K/Space labels) are meaningless on touch devices — no
+       physical keyboard means they can't actually be used, so showing them there is just
+       clutter. (hover: none) and (pointer: coarse) specifically detects a touch-primary
+       device, rather than just a narrow viewport — a resized desktop browser window is
+       still narrow but has a real keyboard, so a screen-width media query would wrongly
+       hide these for that case too. */
+    @media (hover: none) and (pointer: coarse) {
+      .keyboard-hint {
+        display: none !important;
+      }
+    }
+
     .font-serif-chinese {
       font-family: 'Noto Serif SC', serif;
     }
@@ -568,7 +580,7 @@
                     @click="isPinyinRevealed = true" 
                     class="px-4 py-1.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold hover:bg-amber-500/20 transition"
                   >
-                    点击或按空格显示拼音
+                    点击<span class="keyboard-hint">或按空格</span>显示拼音
                   </button>
                 </div>
               </div>
@@ -581,7 +593,7 @@
                 class="py-3 px-4 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold text-sm border border-rose-500/20 flex items-center justify-center gap-2 transition"
               >
                 <i class="ph ph-x-circle text-lg"></i>
-                <span>不认识 (错 K)</span>
+                <span>不认识<span class="keyboard-hint"> (错 K)</span></span>
               </button>
 
               <button 
@@ -589,7 +601,7 @@
                 class="py-3 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-sm border border-emerald-500/20 flex items-center justify-center gap-2 transition"
               >
                 <i class="ph ph-check-circle text-lg"></i>
-                <span>掌握了 (对 J)</span>
+                <span>掌握了<span class="keyboard-hint"> (对 J)</span></span>
               </button>
             </div>
 
@@ -606,7 +618,10 @@
             </button>
           </div>
 
-          <div class="text-xs text-stone-400 flex items-center gap-4">
+          <!-- Keyboard-shortcut hints only make sense on a device with an actual keyboard
+               — see the .keyboard-hint rule in <style> for why input-capability detection
+               is used instead of screen width. -->
+          <div class="keyboard-hint flex text-xs text-stone-400 items-center gap-4">
             <span>快捷键: <kbd class="px-1.5 py-0.5 bg-stone-200 dark:bg-stone-800 rounded font-mono">Space</kbd> 拼音</span>
             <span><kbd class="px-1.5 py-0.5 bg-stone-200 dark:bg-stone-800 rounded font-mono">J</kbd> 认识</span>
             <span><kbd class="px-1.5 py-0.5 bg-stone-200 dark:bg-stone-800 rounded font-mono">K</kbd> 忘记</span>
@@ -913,7 +928,7 @@
         <div class="text-xs space-y-3 text-stone-600 dark:text-stone-300 leading-relaxed">
           <p><strong>1. 通用规范汉字表说明：</strong> 本平台收录了国务院公布的《通用规范汉字表》共8105字，分为一级字表（3500字）、二级字表（3000字）及三级字表（1605字）。</p>
           <p><strong>2. 滚动加载：</strong> 阅读模式采用平滑流式加载，往下滚动即可自动载入后续汉字，带来丝滑的学习体验。</p>
-          <p><strong>3. 练习模式：</strong> 支持按 30 字分组背诵，支持按键 <kbd class="px-1 py-0.5 bg-stone-200 dark:bg-stone-800 rounded font-mono">J</kbd> (认识) 和 <kbd class="px-1 py-0.5 bg-stone-200 dark:bg-stone-800 rounded font-mono">K</kbd> (忘记) 快速刷字，误按后可点击"撤销"按钮改正。</p>
+          <p><strong>3. 练习模式：</strong> 支持按 30 字分组背诵<span class="keyboard-hint">，支持按键 <kbd class="px-1 py-0.5 bg-stone-200 dark:bg-stone-800 rounded font-mono">J</kbd> (认识) 和 <kbd class="px-1 py-0.5 bg-stone-200 dark:bg-stone-800 rounded font-mono">K</kbd> (忘记) 快速刷字</span>，误按后可点击"撤销"按钮改正。</p>
           <p><strong>4. 三态主题：</strong> 点击导航栏右上角主题按钮可在 ☀️ 浅色模式、🌙 深色模式 与 🖥️ 跟随系统 模式间无缝切换。</p>
         </div>
 
@@ -1037,7 +1052,7 @@
           <!-- Scrollable list, one line per attempt, most recent first. Simpler to read
                at a glance than a bar/line chart — exact date, score, and accuracy % are
                all directly legible instead of needing to hover or eyeball bar heights. -->
-          <div class="w-full max-h-40 overflow-y-auto bg-stone-100 dark:bg-stone-950/50 rounded-lg divide-y divide-stone-200 dark:divide-stone-800">
+          <div class="w-full bg-stone-100 dark:bg-stone-950/50 rounded-lg divide-y divide-stone-200 dark:divide-stone-800">
             <div
               v-for="(entry, idx) in reversedHistory"
               :key="entry.t"
