@@ -549,32 +549,26 @@
                 </div>
 
                 <!-- Pinyin (Hidden until revealed). Once revealed, a speaker button
-                    appears beside it without affecting the pinyin's center position. -->
-                <div class="h-10 flex items-center justify-center">
-
-                  <!-- This wrapper is centered -->
-                  <div
+                     appears beside it — with a matching-width invisible spacer on the
+                     opposite side, so the button's presence doesn't visually push the
+                     pinyin text off-center (it would otherwise sit noticeably left of
+                     true center, since only one side carries the button's width). -->
+                <div class="h-10 flex items-center justify-center gap-2">
+                  <span v-if="isPinyinRevealed" class="w-8 shrink-0" aria-hidden="true"></span>
+                  <span 
                     v-if="isPinyinRevealed"
-                    class="relative"
-                  >
-                    <!-- Pinyin -->
-                    <span 
                       class="font-pinyin text-2xl font-bold text-emerald-600 dark:text-emerald-400 tracking-widest animate-bounce-short"
                     >
                       {{ currentPracticeCard.pinyin }}
                     </span>
-
-                    <!-- Speaker button -->
                     <button
+                    v-if="isPinyinRevealed"
                       @click="speakAllReadings(currentPracticeCard)"
                       :aria-label="`朗读 ${currentPracticeCard.char} 发音`"
-                      class="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-8 h-8 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 flex items-center justify-center transition"
+                    class="w-8 h-8 shrink-0 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 flex items-center justify-center transition"
                     >
                       <i class="ph ph-speaker-high"></i>
                     </button>
-                  </div>
-
-                  <!-- Reveal button -->
                   <button 
                     v-else 
                     @click="isPinyinRevealed = true" 
