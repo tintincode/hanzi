@@ -599,16 +599,22 @@
               </button>
             </div>
 
-            <!-- Undo: only shown right after a grade, so a mis-tap (e.g. meant 对, hit
-                 错) can be corrected instead of being stuck wrong for the rest of the
-                 round. Single-level — using it clears the ability to undo again. -->
+            <!-- Undo: reserved space always, regardless of whether there's anything to
+                 undo yet — visibility/opacity toggle instead of v-if. The first-ever
+                 grade would otherwise insert this element into the DOM for the first
+                 time, changing how much space the flex layout has to distribute and
+                 shifting the auto-centered character above it. Keeping it permanently in
+                 the layout (just invisible/inert until needed) means the card's internal
+                 layout never has to reflow based on grading state. -->
             <button
-              v-if="lastGrade"
-              @click="undoLastGrade"
-              class="w-full py-2 rounded-xl text-xs text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center justify-center gap-1.5 transition"
+              @click="lastGrade && undoLastGrade()"
+              :class="lastGrade ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+              :tabindex="lastGrade ? 0 : -1"
+              class="w-full py-2 rounded-xl text-xs text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center justify-center gap-1.5 whitespace-nowrap overflow-hidden transition-opacity duration-200"
             >
               <i class="ph ph-arrow-u-up-left"></i>
-              <span>撤销上一题（{{ lastGrade.card.char }} 判定为{{ lastGrade.isCorrect ? '"认识"' : '"不认识"' }}）</span>
+              <span v-if="lastGrade">撤销上一题（{{ lastGrade.card.char }} 判定为{{ lastGrade.isCorrect ? '"认识"' : '"不认识"' }}）</span>
+              <span v-else>&nbsp;</span>
             </button>
           </div>
 
