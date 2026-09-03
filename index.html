@@ -164,11 +164,11 @@
           </h1>
         </div>
 
-        <!-- Mode Switches & Settings Controls (kept on the logo row so search can drop to its own line on phones) -->
-        <div class="flex items-center gap-2 order-2 sm:order-3">
+        <!-- Mode Switches & Settings Controls (kept on the logo row so search can drop to its own line on phones). shrink-0 protects these buttons from being squeezed below their content width — without it, landscape phones (wide enough to cross the sm: breakpoint but with a cramped total row width) would compress this div instead of the search bar, forcing the button labels' CJK text to wrap character-by-character into a tall, misshapen button. -->
+        <div class="flex items-center gap-2 order-2 sm:order-3 shrink-0">
           
           <!-- Mode Tabs (Reading / Practice) -->
-          <div class="flex p-1 bg-stone-800/90 rounded-lg border border-stone-700/50">
+          <div class="flex p-1 bg-stone-800/90 rounded-lg border border-stone-700/50 whitespace-nowrap">
             <button 
               @click="setAppMode('reading')" 
               aria-label="阅读模式"
@@ -647,13 +647,19 @@
 
             <!-- Accuracy trend for this group across past attempts, so it's clear
                  whether you're actually improving on it over time — not just a single
-                 snapshot of this round. -->
+                 snapshot of this round. Explicit closing tag rather than self-closing
+                 `/>` — the browser's native HTML parser (this file has no build step, so
+                 it parses the raw markup before Vue ever runs) does NOT treat `/>` as
+                 self-closing for unknown custom elements, only for true void elements. A
+                 self-closing custom tag here silently swallows every sibling after it
+                 (the action buttons below) as if they were children of this component,
+                 which then vanish since the component has no <slot> to render them into. -->
             <history-trend-chart
               v-if="getGroupHistory(selectedPracticeGroup).length > 1"
               :history="getGroupHistory(selectedPracticeGroup)"
               :trend="getHistoryTrend(selectedPracticeGroup)"
               class="pt-1"
-            />
+            ></history-trend-chart>
 
             <div class="w-full flex flex-col gap-3 pt-2">
               <div class="w-full flex flex-col sm:flex-row gap-3">
@@ -867,7 +873,7 @@
         <history-trend-chart
           :history="getGroupHistory(historyPopoverGroupIdx)"
           :trend="getHistoryTrend(historyPopoverGroupIdx)"
-        />
+        ></history-trend-chart>
       </div>
     </div>
 
@@ -1548,6 +1554,10 @@
           // modes via the toolbar buttons — otherwise smooth scroll silently stops working
           // when returning to reading mode this way.
           setAppMode('reading');
+          // The content resets to the first batch, but without this the viewport itself
+          // stays wherever it was scrolled to — looking like nothing happened if you'd
+          // scrolled deep into the list before clicking the logo.
+          scrollToTop();
         }
 
         // Modal Controls
