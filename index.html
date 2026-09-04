@@ -273,67 +273,75 @@
            placeholder there). Practice mode shows session navigation on the left and the
            mastery progress + reset on the right, replacing what used to be a second,
            separate toolbar card underneath this one. -->
-      <div v-if="appMode === 'reading'" class="bg-parchment-card dark:bg-stone-900 rounded-2xl p-4 shadow-sm border border-stone-200/80 dark:border-stone-800/80 transition min-h-[68px] flex flex-wrap items-center justify-end gap-2">
+      <div v-if="appMode === 'reading'" class="bg-parchment-card dark:bg-stone-900 rounded-2xl p-4 shadow-sm border border-stone-200/80 dark:border-stone-800/80 transition min-h-[68px] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
-        <!-- Tier & Classification Filter Buttons -->
+        <!-- Tier & Classification Filter Buttons: one cohesive segmented-control group
+             (matching the mode-tabs styling) instead of four separate floating pill
+             buttons with a stray divider — reads as one control instead of loose chips.
+             CSS grid (not flex) so all four buttons split the row equally regardless of
+             label length, rather than each being sized to its own content and leaving
+             the row unevenly filled. -->
+        <div class="grid grid-cols-4 p-1 bg-stone-100 dark:bg-stone-800 rounded-xl gap-1">
         <button 
           @click="setActiveTier('all')" 
           :class="[
-            'px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1',
+              'px-2 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 whitespace-nowrap',
             activeTier === 'all' 
               ? 'bg-amber-500 text-white shadow-sm' 
-              : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                : 'text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
           ]"
         >
-          全部 8105
+            全部 <span class="opacity-60">8105</span>
         </button>
         
         <button 
           @click="setActiveTier('1')" 
           :class="[
-            'px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1',
+              'px-2 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 whitespace-nowrap',
             activeTier === '1' 
               ? 'bg-amber-500 text-white shadow-sm' 
-              : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                : 'text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
           ]"
         >
-          一级 3500
+            一级 <span class="opacity-60">3500</span>
         </button>
 
         <button 
           @click="setActiveTier('2')" 
           :class="[
-            'px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1',
+              'px-2 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 whitespace-nowrap',
             activeTier === '2' 
               ? 'bg-amber-500 text-white shadow-sm' 
-              : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                : 'text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
           ]"
         >
-          二级 3000
+            二级 <span class="opacity-60">3000</span>
         </button>
 
         <button 
           @click="setActiveTier('3')" 
           :class="[
-            'px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1',
+              'px-2 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 whitespace-nowrap',
             activeTier === '3' 
               ? 'bg-amber-500 text-white shadow-sm' 
-              : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                : 'text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
           ]"
         >
-          三级 1605
+            三级 <span class="opacity-60">1605</span>
         </button>
+        </div>
 
-        <div class="h-6 w-px bg-stone-200 dark:bg-stone-800 mx-1"></div>
-
-        <!-- Favorites Filter Toggle -->
+        <!-- Favorites group: visually separate from the tier control, right-aligned on
+             desktop, its own row on mobile instead of an orphaned single item wrapping
+             onto a line by itself. -->
+        <div class="flex items-center gap-2 shrink-0">
         <button 
           @click="toggleFavoriteOnlyFilter" 
           :class="[
-            'px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5',
+              'flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center sm:justify-start gap-1.5',
             onlyFavorites 
               ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800' 
-              : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 border border-transparent'
           ]"
         >
           <i class="ph-fill ph-star text-amber-500"></i>
@@ -347,11 +355,12 @@
         <button 
           v-if="favorites.length > 0" 
           @click="requestConfirm('清空所有收藏？', `将移除全部 ${favorites.length} 个收藏字，此操作无法撤销。`, clearFavorites)" 
-          class="p-1.5 rounded-lg text-stone-400 hover:text-rose-500 hover:bg-rose-500/10 transition"
+            class="shrink-0 p-2 rounded-lg text-stone-400 hover:text-rose-500 hover:bg-rose-500/10 transition"
           title="清空所有收藏"
         >
           <i class="ph ph-trash text-base"></i>
         </button>
+        </div>
 
       </div>
 
