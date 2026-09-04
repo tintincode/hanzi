@@ -159,8 +159,9 @@
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-serif-chinese font-bold text-2xl shadow-lg shadow-amber-900/20">
             汉
           </div>
-          <h1 class="text-2xl font-bold font-serif-chinese tracking-wide bg-gradient-to-r from-amber-200 via-stone-100 to-stone-300 bg-clip-text text-transparent hidden sm:block">
-            通用规范汉字表
+          <h1 class="text-sm sm:text-xl font-bold font-serif-chinese tracking-wide bg-gradient-to-r from-amber-200 via-stone-100 to-stone-300 bg-clip-text text-transparent whitespace-nowrap">
+            通用规范汉字表 
+            <!-- <span class="text-[10px] sm:text-xs tracking-normal font-sans px-1.5 sm:px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">学习版</span> -->
           </h1>
         </div>
 
@@ -178,7 +179,7 @@
               ]"
             >
               <i class="ph ph-book-open text-base"></i>
-              <span class="hidden sm:inline">阅读模式</span>
+              <span class="hidden sm:inline">阅读</span>
             </button>
             <button 
               @click="setAppMode('practice')" 
@@ -189,9 +190,21 @@
               ]"
             >
               <i class="ph ph-brain text-base"></i>
-              <span class="hidden sm:inline">练习模式</span>
+              <span class="hidden sm:inline">练习</span>
             </button>
           </div>
+
+          <!-- Search Toggle: mobile only. Collapses the search bar to an icon by
+               default, expanding it into the full input on tap instead of it always
+               occupying a full second row. -->
+          <button
+            @click="toggleMobileSearch"
+            aria-label="搜索"
+            class="sm:hidden p-2 rounded-lg border transition flex items-center justify-center"
+            :class="mobileSearchExpanded ? 'bg-amber-600 border-amber-500 text-white' : 'bg-stone-800 hover:bg-stone-700 border-stone-700/60 text-stone-200'"
+          >
+            <i class="ph ph-magnifying-glass text-lg"></i>
+          </button>
 
           <!-- Theme Toggle Switcher (Light -> Dark -> System) -->
           <button 
@@ -219,11 +232,19 @@
           </button>
         </div>
 
-        <!-- Search Bar: full width of its own row on phones, inline between logo and mode tabs on sm+ -->
-        <div class="order-3 sm:order-2 basis-full sm:basis-auto flex-1 max-w-xl relative">
+        <!-- Search Bar: always visible inline on sm+ (sm:block overrides the mobile
+             toggle regardless of state). On mobile, visibility is driven by
+             mobileSearchExpanded — but also auto-shows whenever there's an active query,
+             so a search started on a wider screen doesn't silently hide with no visible
+             explanation for the filtered results if the window narrows. -->
+        <div 
+          class="order-3 sm:order-2 sm:basis-auto flex-1 max-w-xl relative sm:block"
+          :class="(mobileSearchExpanded || searchQuery) ? 'block basis-full' : 'hidden'"
+        >
           <div class="relative">
             <i class="ph ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 text-lg"></i>
             <input 
+              ref="searchInputEl"
               type="text" 
               v-model="searchQuery" 
               placeholder="搜索汉字、拼音或序号 (例: 一, yi, #1)..." 
@@ -655,7 +676,7 @@
                  (the action buttons below) as if they were children of this component,
                  which then vanish since the component has no <slot> to render them into. -->
             <history-trend-chart
-              v-if="getGroupHistory(selectedPracticeGroup).length > 1"
+              v-if="getGroupHistory(selectedPracticeGroup).length > 0"
               :history="getGroupHistory(selectedPracticeGroup)"
               :trend="getHistoryTrend(selectedPracticeGroup)"
               class="pt-1"
@@ -1043,7 +1064,7 @@
         }
       },
       template: `
-        <div v-if="history.length > 1" class="w-full">
+        <div v-if="history.length > 0" class="w-full">
           <div class="text-xs font-semibold text-stone-500 dark:text-stone-400 mb-1.5 flex items-center justify-between">
             <span>历史练习记录（{{ history.length }} 次）</span>
             <span
@@ -1057,7 +1078,9 @@
           </div>
           <!-- Scrollable list, one line per attempt, most recent first. Simpler to read
                at a glance than a bar/line chart — exact date, score, and accuracy % are
-               all directly legible instead of needing to hover or eyeball bar heights. -->
+               all directly legible instead of needing to hover or eyeball bar heights.
+               Shown even with just one attempt — a one-row list is still useful; it's
+               only the trend comparison above (which needs 2+ points) that's skipped. -->
           <div class="w-full bg-stone-100 dark:bg-stone-950/50 rounded-lg divide-y divide-stone-200 dark:divide-stone-800">
             <div
               v-for="(entry, idx) in reversedHistory"
@@ -1070,9 +1093,6 @@
               <span class="font-bold w-10 text-right" :class="accuracyClass(entry.accuracy)">{{ entry.accuracy }}%</span>
             </div>
           </div>
-        </div>
-        <div v-else-if="history.length === 1" class="w-full text-center text-xs text-stone-400 py-2">
-          仅一次练习记录（{{ history[0].accuracy }}%），再次练习后可查看趋势
         </div>
         <div v-else class="w-full text-center text-xs text-stone-400 py-2">
           暂无练习记录
@@ -1540,6 +1560,22 @@
           searchQuery.value = '';
           debouncedSearchQuery.value = '';
           resetLoadedCount();
+        }
+
+        // Mobile search collapse/expand. The input itself only exists once in the DOM
+        // (shared between mobile and desktop layouts via responsive classes, not two
+        // separate inputs), so toggling this just changes visibility + autofocuses on
+        // expand. Collapsing also clears any active query, so a hidden input doesn't
+        // leave a stale filter silently applied to the grid with no visible explanation.
+        const mobileSearchExpanded = ref(false);
+        const searchInputEl = ref(null);
+        function toggleMobileSearch() {
+          mobileSearchExpanded.value = !mobileSearchExpanded.value;
+          if (mobileSearchExpanded.value) {
+            nextTick(() => searchInputEl.value?.focus());
+          } else if (searchQuery.value) {
+            clearSearch();
+          }
         }
 
         function resetToDefault() {
@@ -2030,6 +2066,9 @@
           setAppMode,
           onSearchInput,
           clearSearch,
+          mobileSearchExpanded,
+          searchInputEl,
+          toggleMobileSearch,
           resetToDefault,
           selectedModalChar,
           modalCloseBtn,
