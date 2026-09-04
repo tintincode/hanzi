@@ -364,7 +364,7 @@
 
       </div>
 
-      <div v-else-if="appMode === 'practice'" class="bg-parchment-card dark:bg-stone-900 rounded-2xl p-4 shadow-sm border border-stone-200/80 dark:border-stone-800/80 transition min-h-[68px] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div v-else-if="appMode === 'practice'" class="bg-parchment-card dark:bg-stone-900 rounded-2xl p-4 shadow-sm border border-stone-200/80 dark:border-stone-800/80 transition min-h-[68px] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
         <!-- Left: session navigation / status -->
         <div class="flex items-center gap-2 text-xs font-medium">
@@ -386,8 +386,10 @@
              not a raw attempt counter, so requeued wrong-card retries don't inflate the
              number. Live round tally (correct/wrong) lives on the flashcard itself instead
              of here, since a lifetime cumulative count next to a mastery bar was redundant
-             noise. -->
-        <div class="flex items-center gap-4">
+             noise. No divider between the two pieces here — matches reading mode's
+             toolbar, which dropped its divider for the same "looks like an orphaned
+             fragment" reason. -->
+        <div class="flex items-center gap-2">
           <div class="flex flex-col gap-1 min-w-[180px] flex-1">
             <div class="flex justify-between items-center text-xs font-semibold text-stone-500 dark:text-stone-400">
               <span>已掌握汉字</span>
@@ -403,11 +405,9 @@
             </div>
           </div>
 
-          <div class="h-8 w-px bg-stone-200 dark:bg-stone-800 hidden sm:block"></div>
-
           <button 
             @click="requestConfirm('重置练习记录？', '将清除所有已掌握字标记与练习统计，此操作无法撤销。', resetPracticeStats)" 
-            class="px-3 py-1.5 rounded-lg text-xs text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 transition whitespace-nowrap"
+            class="shrink-0 px-3 py-1.5 rounded-lg text-xs text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 transition whitespace-nowrap"
           >
             <i class="ph ph-arrow-counter-clockwise inline mr-1"></i> 重置练习记录
           </button>
@@ -1327,9 +1327,55 @@
 
         const filteredCharactersTotal = computed(() => filteredCharacters.value.length);
 
+        // Virtualization: once the rendered window grows past a threshold, cards
+        // scrolled far above the current position are dropped from the DOM entirely
+        // (not just paint-skipped via content-visibility) to cap total node count —
+        // otherwise scrolling through several thousand cards causes real, measurable lag
+        // from Vue having to track/diff that many nodes on every re-render, not just
+        // paint cost. readingWindowStart marks where the rendered slice begins;
+        // loadedCount (from infinite scroll) still marks where it ends.
+        const READING_WINDOW_SIZE = 480; // cards kept mounted at once
+        const READING_TRIM_CHUNK = 180;  // trimmed per step, so this doesn't fire every batch
+        const readingWindowStart = ref(0);
+
         const visibleCharacters = computed(() => {
-          return filteredCharacters.value.slice(0, loadedCount.value);
+          return filteredCharacters.value.slice(readingWindowStart.value, loadedCount.value);
         });
+
+        // Measured (not estimated) card size, so the spacer that replaces trimmed cards
+        // keeps the scrollbar/scroll-position accurate — an inaccurate guess here would
+        // cause a visible jump exactly when the trim boundary is crossed, unlike
+        // content-visibility's intrinsic-size hint which browsers self-correct around.
+        const gridContainerEl = ref(null);
+        const measuredColumns = ref(3);
+        const measuredRowHeight = ref(150); // sensible fallback until first measurement
+        function remeasureGrid() {
+          const el = gridContainerEl.value;
+          if (!el) return;
+          const firstCard = el.querySelector('.hanzi-card');
+          if (!firstCard) return;
+          const style = window.getComputedStyle(el);
+          // getComputedStyle resolves grid-template-columns to actual pixel widths per
+          // track (e.g. "115px 115px 115px"), so counting whitespace-separated tokens
+          // directly gives the current column count for whatever breakpoint is active.
+          const colCount = style.gridTemplateColumns.split(' ').filter(Boolean).length;
+          measuredColumns.value = Math.max(1, colCount);
+          const rect = firstCard.getBoundingClientRect();
+          const gapPx = parseFloat(style.rowGap || style.gap) || 0;
+          if (rect.height > 0) measuredRowHeight.value = rect.height + gapPx;
+        }
+
+        const topSpacerHeight = computed(() => {
+          const trimmedRows = Math.floor(readingWindowStart.value / measuredColumns.value);
+          return trimmedRows * measuredRowHeight.value;
+        });
+
+        function trimRenderedWindowIfNeeded() {
+          if (loadedCount.value - readingWindowStart.value > READING_WINDOW_SIZE) {
+            readingWindowStart.value += READING_TRIM_CHUNK;
+            nextTick(remeasureGrid);
+          }
+        }
 
         const currentTierHeading = computed(() => {
           if (activeTier.value === '1') return '一级字表 (3500字)';
@@ -1527,6 +1573,7 @@
         // so that content has actually rendered first.
         function resetLoadedCount() {
           loadedCount.value = 90;
+          readingWindowStart.value = 0;
           nextTick(() => setupInfiniteScroll());
         }
 
@@ -1594,6 +1641,7 @@
           activeTier.value = 'all';
           onlyFavorites.value = false;
           loadedCount.value = 90;
+          readingWindowStart.value = 0;
           // Route through setAppMode rather than setting appMode.value directly, so the
           // infinite-scroll sentinel gets re-observed the same way it does when switching
           // modes via the toolbar buttons — otherwise smooth scroll silently stops working
@@ -2000,6 +2048,7 @@
                 // speeds, but enough to stop a fast-scroll pile-up.
                 isLoadingMore.value = true;
                 loadedCount.value += 90;
+                trimRenderedWindowIfNeeded();
                 requestAnimationFrame(() => {
                   requestAnimationFrame(() => {
                     isLoadingMore.value = false;
@@ -2027,6 +2076,16 @@
         }
         function scrollToTop() {
           window.scrollTo({ top: 0, behavior: 'smooth' });
+          // If cards were trimmed from the window (deep scroll history), jumping back to
+          // the top would otherwise land on the blank spacer that replaced them instead
+          // of actual cards. Reset to a fresh initial view, same as resetToDefault — not
+          // just readingWindowStart alone, since keeping a large stale loadedCount while
+          // resetting the window start would immediately re-render everything from
+          // scratch up to that count, reintroducing the exact lag this was meant to fix.
+          if (appMode.value === 'reading' && readingWindowStart.value > 0) {
+            loadedCount.value = 90;
+            readingWindowStart.value = 0;
+          }
         }
 
         // Lifecycle Hooks
@@ -2035,6 +2094,8 @@
           setupInfiniteScroll();
           window.addEventListener('keydown', handleKeyDown);
           window.addEventListener('scroll', handleScroll, { passive: true });
+          window.addEventListener('resize', remeasureGrid, { passive: true });
+          nextTick(remeasureGrid);
 
           // Listen for system color theme changes
           window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
@@ -2048,6 +2109,7 @@
           if (observer) observer.disconnect();
           window.removeEventListener('keydown', handleKeyDown);
           window.removeEventListener('scroll', handleScroll);
+          window.removeEventListener('resize', remeasureGrid);
         });
 
         return {
@@ -2066,6 +2128,8 @@
           infiniteScrollTrigger,
           filteredCharactersTotal,
           visibleCharacters,
+          gridContainerEl,
+          topSpacerHeight,
           currentTierHeading,
           toggleFavorite,
           isFavorite,
