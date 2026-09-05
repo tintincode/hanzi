@@ -435,7 +435,7 @@
              between the spacer and the grid too, silently throwing off the precise
              height math the spacer depends on. -->
         <div>
-          <div :style="{ height: topSpacerHeight + 'px' }" aria-hidden="true"></div>
+          <div ref="topSpacerEl" :style="{ height: topSpacerHeight + 'px' }" aria-hidden="true"></div>
           <div ref="gridContainerEl" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-3.5">
           <div 
             v-for="item in visibleCharacters" 
@@ -1389,6 +1389,39 @@
           }
         }
 
+        // Restoring trimmed cards when scrolling back up. The trim above only handles
+        // the forward/downward direction (loading more, dropping old cards behind you) —
+        // without this, scrolling back up into that region via the native scrollbar
+        // shows nothing but blank spacer space where cards used to be, since they were
+        // actually removed from the DOM, not just visually hidden. Mirrors the bottom
+        // infinite-scroll observer, but watches the spacer itself and restores backward.
+        //
+        // Restores everything in one shot (readingWindowStart -> 0) rather than a single
+        // chunk. The trimmed region is always one contiguous block starting from index 0,
+        // so any time the spacer is visible at all, the user is heading toward the very
+        // beginning — and a single scrollbar click/drag jumps straight to a position in
+        // one instant leap, giving the observer only one firing to work with. A chunked
+        // restore (correct for gradual wheel/trackpad scrolling, which re-triggers
+        // repeatedly as the spacer keeps shrinking) isn't enough to unwind a large
+        // trimmed region from just that one event, leaving most of it still empty.
+        const topSpacerEl = ref(null);
+        let topRestoreObserver = null;
+        function setupTopRestoreObserver() {
+          if (topRestoreObserver) topRestoreObserver.disconnect();
+          topRestoreObserver = new IntersectionObserver((entries) => {
+            const entry = entries[0];
+            if (entry.isIntersecting && readingWindowStart.value > 0) {
+              readingWindowStart.value = 0;
+              nextTick(remeasureGrid);
+            }
+          }, {
+            rootMargin: '500px'
+          });
+          if (topSpacerEl.value) {
+            topRestoreObserver.observe(topSpacerEl.value);
+          }
+        }
+
         const currentTierHeading = computed(() => {
           if (activeTier.value === '1') return '一级字表 (3500字)';
           if (activeTier.value === '2') return '二级字表 (3000字)';
@@ -1586,7 +1619,10 @@
         function resetLoadedCount() {
           loadedCount.value = 90;
           readingWindowStart.value = 0;
-          nextTick(() => setupInfiniteScroll());
+          nextTick(() => {
+            setupInfiniteScroll();
+            setupTopRestoreObserver();
+          });
         }
 
         function toggleFavoriteOnlyFilter() {
@@ -1607,9 +1643,13 @@
         function setAppMode(mode) {
           appMode.value = mode;
           if (mode === 'reading') {
-            // The sentinel div is inside a v-if block, so its DOM node is recreated each time
-            // we return to reading mode — re-observe it or infinite scroll silently stops working.
-            nextTick(() => setupInfiniteScroll());
+            // The sentinel divs are inside a v-if block, so their DOM nodes are recreated
+            // each time we return to reading mode — re-observe both or infinite
+            // scroll/top-restore silently stop working.
+            nextTick(() => {
+              setupInfiniteScroll();
+              setupTopRestoreObserver();
+            });
           }
         }
 
@@ -2104,6 +2144,7 @@
         onMounted(() => {
           applyTheme();
           setupInfiniteScroll();
+          setupTopRestoreObserver();
           window.addEventListener('keydown', handleKeyDown);
           window.addEventListener('scroll', handleScroll, { passive: true });
           window.addEventListener('resize', remeasureGrid, { passive: true });
@@ -2119,6 +2160,7 @@
 
         onUnmounted(() => {
           if (observer) observer.disconnect();
+          if (topRestoreObserver) topRestoreObserver.disconnect();
           window.removeEventListener('keydown', handleKeyDown);
           window.removeEventListener('scroll', handleScroll);
           window.removeEventListener('resize', remeasureGrid);
@@ -2142,6 +2184,7 @@
           visibleCharacters,
           gridContainerEl,
           topSpacerHeight,
+          topSpacerEl,
           currentTierHeading,
           toggleFavorite,
           isFavorite,
