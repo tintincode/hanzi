@@ -416,7 +416,7 @@
       </div>
 
       <!-- SECTION 1: READING MODE (Grid layout with continuous smooth loading) -->
-      <div v-if="appMode === 'reading'" class="flex flex-col gap-6">
+      <div v-if="appMode === 'reading'" class="flex flex-col gap-3">
 
         <!-- Tier indicator label -->
         <div class="flex items-center gap-2 text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">
@@ -424,8 +424,19 @@
           <span>{{ currentTierHeading }}</span>
         </div>
 
-        <!-- Hanzi Cards Grid -->
-        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-9 gap-3">
+        <!-- Hanzi Cards Grid: a top spacer maintains scroll height for cards trimmed
+             from the window (see readingWindowStart / trimRenderedWindow), so removing
+             far-scrolled-past cards from the DOM doesn't cause a visible jump. Its height
+             is measured from the actual rendered card size, not a hardcoded guess, since
+             an inaccurate estimate here (unlike content-visibility's intrinsic-size hint)
+             would cause a real scroll-position jump when the trim boundary is crossed.
+             Wrapped with the grid in its own zero-gap container — sitting as separate
+             children of the outer flex-col gap-3 would insert that same gap value
+             between the spacer and the grid too, silently throwing off the precise
+             height math the spacer depends on. -->
+        <div>
+          <div :style="{ height: topSpacerHeight + 'px' }" aria-hidden="true"></div>
+          <div ref="gridContainerEl" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-3.5">
           <div 
             v-for="item in visibleCharacters" 
             :key="item.id"
@@ -481,6 +492,7 @@
               <i class="ph ph-speaker-high"></i>
             </button>
           </div>
+          </div>
         </div>
 
         <!-- Infinite Scroll Sentinel Target -->
@@ -500,9 +512,9 @@
 
         <!-- 2A. GROUP SELECTOR VIEW (If no group selected) -->
         <div v-if="selectedPracticeGroup === null" class="flex flex-col gap-8">
-          <div v-for="tier in [1, 2, 3]" :key="tier">
+          <div v-for="tier in [1, 2, 3]" :key="tier" class="flex flex-col gap-3">
             <template v-if="practiceGroupsByTier[tier].length">
-              <div class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">
+              <div class="text-xs font-bold text-stone-500 uppercase tracking-wider">
                 {{ getTierLabel(tier) }} · 按组切分 (每组 30 字)
               </div>
               <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 xl:grid-cols-10 gap-3">
